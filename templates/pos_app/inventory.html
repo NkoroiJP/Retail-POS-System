@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventory Management - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Inventory Management</h2>
+        {% if user.role == 'manager' %}
+        <p>Managing inventory for: <strong>{{ user.store.name }}</strong></p>
+        {% else %}
+        <p>Viewing inventory across all stores</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <form method="GET" class="d-flex gap-2">
+            {% if user.role in 'director,admin' %}
+            <select name="store" class="form-select">
+                <option value="">All Stores</option>
+                {% for store in stores %}
+                <option value="{{ store.id }}" {% if selected_store == store.id|slugify %}selected{% endif %}>
+                    {{ store.name }}
+                </option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+    </div>
+    <div class="col-md-6 text-end">
+        {% if user.role in 'manager,director,admin' %}
+        <a href="{% url 'inventory_transfer' %}" class="btn btn-warning">
+            <i class="fas fa-exchange-alt me-1"></i>Transfer Inventory
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Inventory Items</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Store</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Reorder Level</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in inventory_items %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if item.product.photo %}
+                                            <img src="{{ item.product.photo.url }}" alt="{{ item.product.name }}" class="me-3" style="width: 40px; height: 40px; object-fit: cover; border-radius: 5px;">
+                                        {% else %}
+                                            <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                <i class="fas fa-image text-muted"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div>{{ item.product.name }}</div>
+                                    </div>
+                                </td>
+                                <td>{{ item.product.category.name }}</td>
+                                <td>{{ item.store.name }}</td>
+                                <td>
+                                    <span class="fw-bold">{% if item.quantity < item.reorder_level %}<span class="text-danger">{{ item.quantity }}</span>{% else %}{{ item.quantity }}{% endif %}</span>
+                                </td>
+                                <td>${{ item.product.price }}</td>
+                                <td>{{ item.reorder_level }}</td>
+                                <td>
+                                    {% if item.quantity < item.reorder_level %}
+                                    <span class="badge bg-danger">Low Stock</span>
+                                    {% else %}
+                                    <span class="badge bg-success">In Stock</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7">No inventory items found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if inventory_items.has_other_pages %}
+                <nav aria-label="Inventory pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if inventory_items.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ inventory_items.previous_page_number }}{% if selected_store %}&store={{ selected_store }}{% endif %}">Previous</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for num in inventory_items.paginator.page_range %}
+                        {% if inventory_items.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if selected_store %}&store={{ selected_store }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if inventory_items.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ inventory_items.next_page_number }}{% if selected_store %}&store={{ selected_store }}{% endif %}">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

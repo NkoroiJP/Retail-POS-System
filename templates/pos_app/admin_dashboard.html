@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Admin Dashboard</h2>
+        <p>Welcome, {{ user.username }}! ({{ user.get_role_display }})</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <i class="fas fa-store"></i>
+            <h3>{{ total_stores }}</h3>
+            <p>Total Stores</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <i class="fas fa-box"></i>
+            <h3>{{ total_products }}</h3>
+            <p>Total Products</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <i class="fas fa-shopping-cart"></i>
+            <h3>{{ total_transactions }}</h3>
+            <p>Total Transactions</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <i class="fas fa-dollar-sign"></i>
+            <h3>${{ total_sales|floatformat:2 }}</h3>
+            <p>Total Sales</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Sales by Store</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Store</th>
+                            <th>Total Sales</th>
+                            <th>Transaction Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for store_data in sales_by_store %}
+                        <tr>
+                            <td>{{ store_data.store__name }}</td>
+                            <td>${{ store_data.total_sales|floatformat:2 }}</td>
+                            <td>{{ store_data.transaction_count }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3">No sales data available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'pos' %}" class="btn btn-primary w-100 mb-2">
+                    <i class="fas fa-cash-register me-2"></i>POS Terminal
+                </a>
+                <a href="{% url 'inventory' %}" class="btn btn-info w-100 mb-2">
+                    <i class="fas fa-boxes me-2"></i>Manage Inventory
+                </a>
+                <a href="{% url 'inventory_transfer' %}" class="btn btn-warning w-100 mb-2">
+                    <i class="fas fa-exchange-alt me-2"></i>Inventory Transfer
+                </a>
+                <a href="{% url 'sales_report' %}" class="btn btn-success w-100">
+                    <i class="fas fa-chart-bar me-2"></i>Sales Report
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

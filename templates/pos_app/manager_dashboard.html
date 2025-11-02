@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Manager Dashboard - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Manager Dashboard - {{ store.name }}</h2>
+        <p>Welcome, {{ user.username }}! Managing: {{ store.name }}</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <i class="fas fa-box"></i>
+            <h3>{{ total_products }}</h3>
+            <p>Products in Inventory</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <i class="fas fa-shopping-cart"></i>
+            <h3>{{ total_transactions }}</h3>
+            <p>Total Transactions</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <i class="fas fa-dollar-sign"></i>
+            <h3>${{ total_sales|floatformat:2 }}</h3>
+            <p>Total Sales</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <i class="fas fa-users"></i>
+            <h3>{{ store.users.count }}</h3>
+            <p>Staff Members</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Transactions</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in recent_transactions %}
+                        <tr>
+                            <td>{{ transaction.transaction_id|truncatechars:12 }}</td>
+                            <td>{{ transaction.user.username }}</td>
+                            <td>${{ transaction.total_amount|floatformat:2 }}</td>
+                            <td>{{ transaction.created_at|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4">No recent transactions</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'pos' %}" class="btn btn-primary w-100 mb-2">
+                    <i class="fas fa-cash-register me-2"></i>POS Terminal
+                </a>
+                <a href="{% url 'inventory' %}" class="btn btn-info w-100 mb-2">
+                    <i class="fas fa-boxes me-2"></i>Manage Inventory
+                </a>
+                <a href="{% url 'inventory_transfer' %}" class="btn btn-warning w-100 mb-2">
+                    <i class="fas fa-exchange-alt me-2"></i>Inventory Transfer
+                </a>
+                <a href="{% url 'sales_report' %}" class="btn btn-success w-100">
+                    <i class="fas fa-chart-bar me-2"></i>Sales Report
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

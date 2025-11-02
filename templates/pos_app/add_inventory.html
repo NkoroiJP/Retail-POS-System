@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Inventory - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Add New Inventory</h2>
+        <p>Add products to your store's inventory</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-boxes me-2"></i>Add Product to Inventory</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="product_id" class="form-label">Product</label>
+                            <select class="form-select" id="product_id" name="product_id" required>
+                                <option value="">Select Product</option>
+                                {% for product in products %}
+                                <option value="{{ product.id }}" data-price="{{ product.price }}">
+                                    {{ product.name }} - ${{ product.price }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="store_id" class="form-label">Store</label>
+                            <select class="form-select" id="store_id" name="store_id" required>
+                                <option value="">Select Store</option>
+                                {% for store in stores %}
+                                <option value="{{ store.id }}" {% if user.store and store.id == user.store.id %}selected{% endif %}>
+                                    {{ store.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="quantity" class="form-label">Quantity to Add</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="reorder_level" class="form-label">Reorder Level</label>
+                            <input type="number" class="form-control" id="reorder_level" name="reorder_level" min="1" value="10">
+                            <div class="form-text">Inventory will be marked as low when quantity falls below this level</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Product Preview</label>
+                        <div class="card bg-light p-3" id="product-preview">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-search me-2"></i>Select a product to see details
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-plus me-2"></i>Add to Inventory
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle me-2"></i>Instructions</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Select the product from the dropdown list</li>
+                    <li>Choose the store where you want to add the inventory</li>
+                    <li>Enter the quantity to add</li>
+                    <li>Set the reorder level (when to alert for restocking)</li>
+                    <li>Click "Add to Inventory" to update the records</li>
+                </ul>
+            </div>
+        </div>
+        
+        {% if user.role in 'director,admin' %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-box-open me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'inventory' %}" class="btn btn-info w-100 mb-2">
+                    <i class="fas fa-warehouse me-2"></i>View All Inventory
+                </a>
+                <a href="{% url 'pos' %}" class="btn btn-success w-100">
+                    <i class="fas fa-cash-register me-2"></i>POS Terminal
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Update product preview when product is selected
+    $('#product_id').change(function() {
+        const selectedOption = $(this).find(':selected');
+        const productName = selectedOption.text();
+        const productPrice = selectedOption.data('price');
+        
+        if ($(this).val()) {
+            $('#product-preview').html(`
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        <div style="width: 60px; height: 60px; background: #e9ecef; border-radius: 5px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-box text-muted" style="font-size: 1.5rem;"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">${productName.split(' - ')[0]}</h6>
+                        <p class="mb-0 text-success fw-bold">$${productPrice}</p>
+                    </div>
+                </div>
+            `);
+        } else {
+            $('#product-preview').html(`
+                <div class="text-center text-muted">
+                    <i class="fas fa-search me-2"></i>Select a product to see details
+                </div>
+            `);
+        }
+    });
+    
+    // Auto-populate store for managers
+    {% if user.role == 'manager' %}
+    $(document).ready(function() {
+        $('#store_id').val('{{ user.store.id }}').prop('disabled', true);
+    });
+    {% endif %}
+</script>
+{% endblock %}

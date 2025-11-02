@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventory Transfer - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Inventory Transfer</h2>
+        <p>Transfer inventory between stores (requires director approval)</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Initiate Transfer</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="product_id" class="form-label">Product</label>
+                        <select class="form-select" id="product_id" name="product_id" required>
+                            <option value="">Select Product</option>
+                            {% for item in available_products %}
+                            <option value="{{ item.product.id }}" data-max-quantity="{{ item.quantity }}">
+                                {{ item.product.name }} (Available: {{ item.quantity }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="from_store_id" class="form-label">From Store</label>
+                        <select class="form-select" id="from_store_id" name="from_store_id" required>
+                            <option value="">Select Store</option>
+                            {% for store in from_stores %}
+                            <option value="{{ store.id }}">{{ store.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="to_store_id" class="form-label">To Store</label>
+                        <select class="form-select" id="to_store_id" name="to_store_id" required>
+                            <option value="">Select Store</option>
+                            {% for store in to_stores %}
+                            <option value="{{ store.id }}">{{ store.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+                        <div class="form-text">Maximum available quantity will be shown based on selection</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Request Transfer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    {% if user.role in 'director,admin' %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Pending Transfer Requests</h5>
+            </div>
+            <div class="card-body">
+                {% for transfer in pending_transfers %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6>{{ transfer.product.name }}</h6>
+                        <p class="mb-1">
+                            <strong>From:</strong> {{ transfer.from_store.name }} 
+                            <i class="fas fa-arrow-right mx-2"></i> 
+                            <strong>To:</strong> {{ transfer.to_store.name }}
+                        </p>
+                        <p class="mb-1"><strong>Quantity:</strong> {{ transfer.quantity }}</p>
+                        <p class="mb-2"><strong>Requested by:</strong> {{ transfer.requested_by.get_full_name|default:transfer.requested_by.username }}</p>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Requested: {{ transfer.request_date|date:"M d, Y H:i" }}</small>
+                            <div>
+                                <a href="{% url 'approve_transfer' transfer.id %}" class="btn btn-sm btn-success">Approve</a>
+                                <a href="{% url 'reject_transfer' transfer.id %}" class="btn btn-sm btn-danger">Reject</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted">No pending transfer requests</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if user.role == 'manager' %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Your Transfer Requests</h5>
+            </div>
+            <div class="card-body">
+                {% for transfer in user.transfers_requested.all %}
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>{{ transfer.product.name }}</strong> - 
+                                {{ transfer.quantity }} units from {{ transfer.from_store.name }} 
+                                to {{ transfer.to_store.name }}
+                            </div>
+                            <div>
+                                <span class="badge bg-{{ transfer.status|slugify }}">{{ transfer.get_status_display }}</span>
+                                <small class="text-muted ms-2">{{ transfer.request_date|date:"M d, Y" }}</small>
+                            </div>
+                        </div>
+                        {% if transfer.status == 'approved' and transfer.approved_by %}
+                        <small class="text-muted">Approved by {{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }} on {{ transfer.approval_date|date:"M d, Y" }}</small>
+                        {% elif transfer.status == 'rejected' and transfer.approved_by %}
+                        <small class="text-muted">Rejected by {{ transfer.approved_by.get_full_name|default:transfer.approved_by.username }} on {{ transfer.approval_date|date:"M d, Y" }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted">No transfer requests submitted</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Update max quantity when product is selected
+    $('#product_id').change(function() {
+        const maxQuantity = $(this).find(':selected').data('max-quantity');
+        $('#quantity').attr('max', maxQuantity).val('');
+    });
+    
+    // Update quantity input max when from store is selected (for managers)
+    $('#from_store_id').change(function() {
+        const selectedStoreId = $(this).val();
+        const productId = $('#product_id').val();
+        
+        if (productId && selectedStoreId) {
+            // Find the option with matching product and store
+            const option = $('#product_id option').filter(function() {
+                // This is a simplified approach - in a real app, you'd make an AJAX call
+                return $(this).val() == productId;
+            });
+            
+            const maxQuantity = option.data('max-quantity');
+            $('#quantity').attr('max', maxQuantity);
+        }
+    });
+</script>
+{% endblock %}

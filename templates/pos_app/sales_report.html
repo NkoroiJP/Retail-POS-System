@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+
+{% block title %}Sales Report - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Sales Report</h2>
+        {% if user.role == 'manager' %}
+        <p>Reporting for: <strong>{{ user.store.name }}</strong></p>
+        {% else %}
+        <p>Reporting across all stores</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <form method="GET" class="row g-2">
+            <div class="col-md-5">
+                <label for="start_date" class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div class="col-md-5">
+                <label for="end_date" class="form-label">End Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-dollar-sign fa-2x mb-2"></i>
+                <h3>${{ total_sales|floatformat:2 }}</h3>
+                <p class="mb-0">Total Sales</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                <h3>{{ total_transactions }}</h3>
+                <p class="mb-0">Transactions</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-calculator fa-2x mb-2"></i>
+                <h3>${{ avg_transaction_value|floatformat:2 }}</h3>
+                <p class="mb-0">Avg Transaction</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                <h3>{{ daily_sales|length }}</h3>
+                <p class="mb-0">Active Days</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line me-2"></i>Daily Sales</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="dailySalesChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie me-2"></i>Top Selling Products</h5>
+            </div>
+            <div class="card-body">
+                {% if top_products %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in top_products|slice:":10" %}
+                            <tr>
+                                <td>{{ product.product__name|truncatechars:20 }}</td>
+                                <td><strong>{{ product.total_quantity }}</strong></td>
+                                <td><span class="text-success fw-bold">${{ product.total_revenue|floatformat:2 }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-box-open text-muted mb-2" style="font-size: 2rem;"></i>
+                    <p class="text-muted">No data available for top products</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user.role in 'director,admin' %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Sales by Store</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Store</th>
+                            <th>Total Sales</th>
+                            <th>Transaction Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for store_data in sales_by_store %}
+                        <tr>
+                            <td>{{ store_data.store__name }}</td>
+                            <td>${{ store_data.total_sales|floatformat:2 }}</td>
+                            <td>{{ store_data.transaction_count }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3">No sales data available</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Prepare data for daily sales chart
+    const dailySalesData = {
+        labels: [
+            {% for day in daily_sales %}
+                "{{ day.date }}",
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'Daily Sales',
+            data: [
+                {% for day in daily_sales %}
+                    {{ day.daily_total|floatformat:2 }},
+                {% endfor %}
+            ],
+            backgroundColor: 'rgba(0, 123, 255, 0.2)',
+            borderColor: 'rgba(0, 123, 255, 1)',
+            borderWidth: 1
+        }]
+    };
+
+    // Render the chart
+    const ctx = document.getElementById('dailySalesChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: dailySalesData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Receipt - {{ transaction.transaction_id }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .receipt-header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .receipt-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .receipt-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        .total-section {
+            text-align: right;
+            margin-top: 15px;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+            font-size: 10px;
+        }
+        .action-buttons {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .btn {
+            padding: 8px 16px;
+            margin: 0 5px;
+            text-decoration: none;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-header">
+        <div class="receipt-title">SALES RECEIPT</div>
+        <div>{{ transaction.store.name }}</div>
+        <div>{{ transaction.store.address }}</div>
+        <div>{{ transaction.store.phone }} | {{ transaction.store.email }}</div>
+    </div>
+    
+    <div class="receipt-info">
+        <div>
+            <strong>Receipt #:</strong> {{ transaction.transaction_id }}<br>
+            <strong>Date:</strong> {{ transaction.created_at|date:"M d, Y H:i" }}<br>
+            <strong>Cashier:</strong> {{ transaction.user.get_full_name|default:transaction.user.username }}
+        </div>
+        <div>
+            <strong>Transaction Type:</strong> {{ transaction.get_transaction_type_display }}<br>
+            <strong>Items:</strong> {{ total_items }}<br>
+            <strong>Commission:</strong> KES {{ transaction.commission|floatformat:2 }}
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>KES {{ item.unit_price|floatformat:2 }}</td>
+                <td>KES {{ item.total_price|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="total-section">
+        <div class="d-flex justify-content-between mb-1">
+            <span>Subtotal:</span>
+            <span>KES {{ transaction.subtotal|floatformat:2 }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-1">
+            <span>VAT (16%):</span>
+            <span>KES {{ transaction.vat_amount|floatformat:2 }}</span>
+        </div>
+        <div class="d-flex justify-content-between border-top pt-2 mt-1">
+            <strong>Total:</strong>
+            <strong>KES {{ transaction.total_amount|floatformat:2 }}</strong>
+        </div>
+    </div>
+    
+    <div class="commission-section mt-3">
+        <h4>Cashier Commission</h4>
+        <p>KES {{ transaction.commission|floatformat:2 }} (5% of total sale)</p>
+    </div>
+    
+    <div class="footer">
+        <p>Thank you for your business!</p>
+        <p>This receipt is proof of purchase. Please keep for your records.</p>
+    </div>
+    
+    <div class="action-buttons">
+        <a href="{% url 'generate_receipt' transaction.transaction_id %}" class="btn">Download PDF</a>
+        <a href="javascript:window.print()" class="btn">Print Receipt</a>
+        <a href="{% url 'dashboard' %}" class="btn">Back to Dashboard</a>
+    </div>
+</body>
+</html>

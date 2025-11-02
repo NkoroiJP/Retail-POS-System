@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+
+{% block title %}Stock Take - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Stock Take</h2>
+        <p>Manually count and update inventory quantities</p>
+    </div>
+</div>
+
+{% if user.role in 'director,admin' %}
+<div class="row mb-3">
+    <div class="col-md-6">
+        <form method="GET" class="d-flex gap-2">
+            <select name="store" class="form-select">
+                <option value="">Select Store to Stock Take</option>
+                {% for store in stores %}
+                <option value="{{ store.id }}" {% if selected_store_id == store.id|stringformat:"s" %}selected{% endif %}>
+                    {{ store.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Select Store</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% if inventory_items %}
+<form method="post">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>
+                        <i class="fas fa-clipboard-list me-2"></i>
+                        Stock Take for {% if user.role == 'manager' %}{{ user.store.name }}{% elif selected_store_id %}{{ stores|dictsort:"id"|first.name }}{% else %}{{ stores.first.name }}{% endif %}
+                    </h5>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-2"></i>Save Counts
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Category</th>
+                                    <th>Current Count</th>
+                                    <th>Counted Quantity</th>
+                                    <th>Difference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in inventory_items %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if item.product.photo %}
+                                                <img src="{{ item.product.photo.url }}" alt="{{ item.product.name }}" class="me-2" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+                                            {% else %}
+                                                <div class="bg-light rounded me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border-radius: 4px;">
+                                                    <i class="fas fa-box text-muted"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div>{{ item.product.name }}</div>
+                                        </div>
+                                    </td>
+                                    <td>{{ item.product.category.name }}</td>
+                                    <td class="fw-bold">{{ item.quantity }}</td>
+                                    <td>
+                                        <input type="hidden" name="product_id" value="{{ item.product.id }}">
+                                        {% if user.role == 'director' or user.role == 'admin' %}
+                                            <input type="hidden" name="store_id_{{ item.product.id }}" value="{{ item.store.id }}">
+                                        {% endif %}
+                                        <input type="number" name="counted_quantity" class="form-control counted-qty" value="{{ item.quantity }}" min="0" required>
+                                    </td>
+                                    <td>
+                                        <span class="diff-value text-primary fw-bold">0</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-3">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-save me-2"></i>Save All Counts
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="verify-counts">
+                            <i class="fas fa-check-circle me-2"></i>Verify Counts
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-box-open text-muted mb-3" style="font-size: 3rem;"></i>
+                <h5 class="text-muted">No inventory items found</h5>
+                <p class="text-muted">Select a store with inventory to perform stock take</p>
+                {% if user.role in 'director,admin' %}
+                <a href="{% url 'stock_take' %}" class="btn btn-primary">Select Store</a>
+                {% else %}
+                <a href="{% url 'inventory' %}" class="btn btn-primary">View Inventory</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Calculate difference as user types
+    $(document).on('input', '.counted-qty', function() {
+        var row = $(this).closest('tr');
+        var currentCount = parseInt(row.find('td:nth-child(3)').text()) || 0;
+        var countedCount = parseInt($(this).val()) || 0;
+        var difference = countedCount - currentCount;
+        
+        var diffElement = row.find('.diff-value');
+        diffElement.text(difference);
+        
+        // Set color based on difference
+        diffElement.removeClass('text-primary text-success text-danger');
+        if (difference > 0) {
+            diffElement.addClass('text-success');
+        } else if (difference < 0) {
+            diffElement.addClass('text-danger');
+        } else {
+            diffElement.addClass('text-primary');
+        }
+    });
+    
+    // Initialize differences for all rows on page load
+    $('.counted-qty').each(function() {
+        $(this).trigger('input');
+    });
+    
+    // Verify counts button functionality
+    $('#verify-counts').click(function() {
+        var differences = [];
+        var totalItems = $('.counted-qty').length;
+        var totalDifference = 0;
+        
+        $('.counted-qty').each(function() {
+            var row = $(this).closest('tr');
+            var productName = row.find('td:first').text().trim();
+            var currentCount = parseInt(row.find('td:nth-child(3)').text()) || 0;
+            var countedCount = parseInt($(this).val()) || 0;
+            var difference = countedCount - currentCount;
+            
+            if (difference !== 0) {
+                differences.push({
+                    product: productName,
+                    current: currentCount,
+                    counted: countedCount,
+                    difference: difference
+                });
+            }
+            
+            totalDifference += difference;
+        });
+        
+        var summary = "Stock Take Summary:\n\n";
+        summary += "Total Products: " + totalItems + "\n";
+        summary += "Products with Differences: " + differences.length + "\n";
+        summary += "Net Inventory Change: " + totalDifference + "\n\n";
+        
+        if (differences.length > 0) {
+            summary += "Products with count differences:\n";
+            $.each(differences, function(index, item) {
+                summary += "- " + item.product + ": " + item.current + " → " + item.counted + " (" + (item.difference > 0 ? '+' : '') + item.difference + ")\n";
+            });
+        } else {
+            summary += "All counts match current inventory.";
+        }
+        
+        alert(summary);
+    });
+</script>
+{% endblock %}

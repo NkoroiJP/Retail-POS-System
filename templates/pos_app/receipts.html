@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}Receipts - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-receipt me-2"></i>Receipts</h2>
+        <p>View and manage your sales receipts</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-list me-2"></i>Transaction History</h5>
+                <div>
+                    <span class="badge bg-primary">{{ transactions.paginator.count }} Total Transactions</span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if transactions %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Date</th>
+                                <th>Cashier</th>
+                                <th>Store</th>
+                                <th>Items</th>
+                                <th>Subtotal</th>
+                                <th>VAT (16%)</th>
+                                <th>Total</th>
+                                <th>Your Commission</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.transaction_id|truncatechars:12 }}</td>
+                                <td>{{ transaction.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>{{ transaction.user.get_full_name|default:transaction.user.username }}</td>
+                                <td>{{ transaction.store.name }}</td>
+                                <td>{{ transaction.items.count }}</td>
+                                <td>KES {{ transaction.subtotal|floatformat:2 }}</td>
+                                <td>KES {{ transaction.vat_amount|floatformat:2 }}</td>
+                                <td><strong>KES {{ transaction.total_amount|floatformat:2 }}</strong></td>
+                                <td>
+                                    {% if transaction.user == user %}
+                                        <span class="text-success">KES {{ transaction.commission|floatformat:2 }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'view_receipt' transaction.transaction_id %}" class="btn btn-sm btn-primary" title="View Receipt">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'generate_receipt' transaction.transaction_id %}" class="btn btn-sm btn-success" title="Download PDF">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-info print-receipt" data-transaction-id="{{ transaction.transaction_id }}" title="Print Receipt">
+                                        <i class="fas fa-print"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if transactions.has_other_pages %}
+                <nav aria-label="Receipts pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if transactions.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ transactions.previous_page_number }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for num in transactions.paginator.page_range %}
+                        {% if transactions.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > transactions.number|add:'-3' and num < transactions.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if transactions.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ transactions.next_page_number }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-receipt text-muted mb-3" style="font-size: 3rem;"></i>
+                    <h5 class="text-muted">No transactions found</h5>
+                    <p class="text-muted">There are no sales transactions to display yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Print receipt functionality
+    $('.print-receipt').click(function() {
+        const transactionId = $(this).data('transaction-id');
+        // Open receipt in new window/tab for printing
+        window.open('{% url "view_receipt" "TRANSACTION_ID" %}'.replace('TRANSACTION_ID', transactionId), '_blank');
+    });
+</script>
+{% endblock %}

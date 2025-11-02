@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}My Commissions - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>My Commissions</h2>
+        <p>Welcome, {{ user.get_full_name|default:user.username }}!</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 col-6">
+        <div class="stat-card">
+            <i class="fas fa-money-bill-wave"></i>
+            <h3>${{ total_commission|floatformat:2 }}</h3>
+            <p>Total Commission Earned</p>
+        </div>
+    </div>
+    <div class="col-md-4 col-6">
+        <div class="stat-card">
+            <i class="fas fa-shopping-cart"></i>
+            <h3>{{ transactions.count }}</h3>
+            <p>Recent Transactions</p>
+        </div>
+    </div>
+    <div class="col-md-4 col-6">
+        <div class="stat-card">
+            <i class="fas fa-percentage"></i>
+            <h3>{{ user.commission_rate }}%</h3>
+            <p>Commission Rate</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Commission Earnings</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>Date</th>
+                            <th>Sale Amount</th>
+                            <th>Commission Earned</th>
+                            <th>Store</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.transaction_id|truncatechars:12 }}</td>
+                            <td>{{ transaction.created_at|date:"M d, Y H:i" }}</td>
+                            <td>${{ transaction.total_amount|floatformat:2 }}</td>
+                            <td><strong>${{ transaction.commission|floatformat:2 }}</strong></td>
+                            <td>{{ transaction.store.name }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">No commission records found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>How Commissions Work</h5>
+            </div>
+            <div class="card-body">
+                <p>Your commission is calculated as <strong>{{ user.commission_rate }}%</strong> of each sale you process.</p>
+                <p>For example, if you process a sale worth $100, you earn ${{ 100|floatformat:2|add:"0" }} × {{ user.commission_rate|floatformat:2|add:"0" }}% = ${{ 100|div:"100"|mul:user.commission_rate|floatformat:2 }} in commission.</p>
+                <p>Commissions are automatically calculated and tracked for each transaction you make.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

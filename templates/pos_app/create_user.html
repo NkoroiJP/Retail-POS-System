@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}Create User - POS System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Create New User</h2>
+        <p>Create new users for your organization</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-user-plus me-2"></i>Create New User Account</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                            <div class="form-text">Used for login</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Select Role</option>
+                                <option value="manager">Store Manager</option>
+                                <option value="staff">Shop Attendant</option>
+                            </select>
+                            <div class="form-text">Role determines user permissions</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3" id="store-field" style="display: none;">
+                            <label for="store" class="form-label">Store</label>
+                            <select class="form-select" id="store" name="store">
+                                <option value="">Select Store</option>
+                                {% for store in stores %}
+                                <option value="{{ store.id }}">{{ store.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Store this user will be assigned to</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <div class="form-text">At least 6 characters</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="password_confirm" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-user-plus me-2"></i>Create User
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle me-2"></i>Role Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 class="text-primary">Store Manager</h6>
+                    <ul class="mb-0">
+                        <li>Manage inventory for assigned store</li>
+                        <li>Manage POS operations</li>
+                        <li>View reports for assigned store</li>
+                        <li>Initiate inventory transfers</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h6 class="text-primary">Shop Attendant</h6>
+                    <ul class="mb-0">
+                        <li>Use POS terminal</li>
+                        <li>Process sales</li>
+                        <li>View commission earnings</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-shield-alt me-2"></i>Security Tips</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Use strong, unique passwords</li>
+                    <li>Assign users to appropriate stores</li>
+                    <li>Regularly review user access</li>
+                    <li>Share login credentials securely</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Show/hide store field based on role selection
+    $('#role').change(function() {
+        if ($(this).val() === 'manager' || $(this).val() === 'staff') {
+            $('#store-field').show();
+            $('#store').prop('required', true);
+        } else {
+            $('#store-field').hide();
+            $('#store').prop('required', false);
+        }
+    });
+    
+    // Validate passwords match
+    $('#password_confirm').on('input', function() {
+        const password = $('#password').val();
+        const confirmPassword = $(this).val();
+        
+        if (password !== confirmPassword) {
+            $(this).removeClass('is-valid').addClass('is-invalid');
+        } else if (confirmPassword) {
+            $(this).removeClass('is-invalid').addClass('is-valid');
+        }
+    });
+    
+    $('#password').on('input', function() {
+        const password = $(this).val();
+        const confirmPassword = $('#password_confirm').val();
+        
+        if (password && confirmPassword && password !== confirmPassword) {
+            $('#password_confirm').removeClass('is-valid').addClass('is-invalid');
+        }
+    });
+</script>
+{% endblock %}
