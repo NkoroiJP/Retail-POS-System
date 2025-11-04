@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.utils import timezone
 from decimal import Decimal
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class User(AbstractUser):
@@ -65,9 +68,17 @@ class Inventory(models.Model):
 
     class Meta:
         unique_together = ('product', 'store')
+        indexes = [
+            models.Index(fields=['store', 'quantity']),
+            models.Index(fields=['product', 'store']),
+        ]
 
     def __str__(self):
         return f"{self.product.name} - {self.store.name}"
+    
+    def is_low_stock(self):
+        """Check if inventory is below reorder level"""
+        return self.quantity <= self.reorder_level
 
 
 class Transaction(models.Model):
@@ -76,7 +87,7 @@ class Transaction(models.Model):
         ('return', 'Return'),
     ]
     
-    transaction_id = models.CharField(max_length=50, unique=True)
+    transaction_id = models.CharField(max_length=50, unique=True, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='transactions')
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE_CHOICES, default='sale')
@@ -84,7 +95,14 @@ class Transaction(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     vat_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     commission = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['-created_at', 'store']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['transaction_type', '-created_at']),
+        ]
 
     def __str__(self):
         return f"{self.transaction_id} - {self.total_amount}"
@@ -120,3 +138,37 @@ class InventoryTransfer(models.Model):
 
     def __str__(self):
         return f"Transfer {self.product.name} from {self.from_store.name} to {self.to_store.name}"
+
+
+class AuditLog(models.Model):
+    """Model to track important system actions"""
+    ACTION_CHOICES = [
+        ('create', 'Create'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+        ('login', 'Login'),
+        ('logout', 'Logout'),
+        ('sale', 'Sale'),
+        ('transfer', 'Inventory Transfer'),
+        ('approval', 'Approval'),
+        ('rejection', 'Rejection'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='audit_logs')
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    model_name = models.CharField(max_length=100, blank=True)
+    object_id = models.CharField(max_length=100, blank=True)
+    description = models.TextField()
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['-timestamp', 'user']),
+            models.Index(fields=['action', '-timestamp']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user} - {self.action} - {self.timestamp}"
