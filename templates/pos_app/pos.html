@@ -349,15 +349,30 @@
             quantities.push(item.quantity);
         });
         
-        // Get CSRF token from meta tag
-        const csrfToken = $('meta[name="csrf-token"]').attr('content');
+        // Get CSRF token from cookie (Django's standard way)
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const csrftoken = getCookie('csrftoken');
         
         // Send AJAX request
         $.ajax({
             url: '{% url "process_sale" %}',
             type: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
             },
             data: {
                 'product_ids[]': productIds,
@@ -365,7 +380,7 @@
             },
             success: function(response) {
                 if (response.success) {
-                    alert('Sale processed successfully!\\n\\nTransaction ID: ' + response.transaction_id + '\\nSubtotal: KES ' + response.subtotal.toFixed(2) + '\\nVAT (16%): KES ' + response.vat_amount.toFixed(2) + '\\nTotal: KES ' + response.total_amount.toFixed(2) + '\\nYour Commission: KES ' + response.commission.toFixed(2));
+                    alert('Sale processed successfully!\n\nTransaction ID: ' + response.transaction_id + '\nSubtotal: KES ' + response.subtotal.toFixed(2) + '\nVAT (16%): KES ' + response.vat_amount.toFixed(2) + '\nTotal: KES ' + response.total_amount.toFixed(2) + '\nYour Commission: KES ' + response.commission.toFixed(2));
                     cart = [];
                     updateCart();
                     $('#checkoutModal').modal('hide');
@@ -375,12 +390,17 @@
                         window.open('/receipt/' + response.transaction_id + '/', '_blank');
                     }, 1000);
                 } else {
-                    alert('Error: ' + response.error);
+                    alert('Error: ' + (response.error || 'Unknown error occurred'));
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Sale processing error:', xhr.responseText);
-                alert('An error occurred while processing the sale. Check console for details.');
+                console.error('Sale processing error:', error);
+                console.error('Response:', xhr.responseText);
+                let errorMsg = 'An error occurred while processing the sale.';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                alert(errorMsg);
             }
         });
     });
@@ -444,8 +464,8 @@
         const vatRate = 0.16;
         const total = subtotal + (subtotal * vatRate);
         
-        // Get CSRF token
-        const csrfToken = $('meta[name="csrf-token"]').attr('content');
+        // Get CSRF token from cookie
+        const csrftoken = getCookie('csrftoken');
         
         // Prepare product data
         const productIds = [];
@@ -459,8 +479,8 @@
         $.ajax({
             url: '{% url "process_sale" %}',
             type: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
             },
             data: {
                 'product_ids[]': productIds,
@@ -471,10 +491,11 @@
                     // Sale processed, now initiate M-Pesa payment
                     initiateMpesaPayment(response.transaction_id, formatted_phone, total.toFixed(2));
                 } else {
-                    $('#paymentMessage').html('<div class="alert alert-danger">Error processing sale: ' + response.error + '</div>');
+                    $('#paymentMessage').html('<div class="alert alert-danger">Error processing sale: ' + (response.error || 'Unknown error') + '</div>');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('M-Pesa sale error:', xhr.responseText);
                 $('#paymentMessage').html('<div class="alert alert-danger">An error occurred while processing the sale.</div>');
             }
         });
@@ -482,13 +503,14 @@
     
     // Function to initiate M-Pesa payment
     function initiateMpesaPayment(transaction_id, phone_number, amount) {
-        const csrfToken = $('meta[name="csrf-token"]').attr('content');
+        // Get CSRF token from cookie
+        const csrftoken = getCookie('csrftoken');
         
         $.ajax({
             url: '/mpesa/initiate-payment/',
             type: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
             },
             data: {
                 'transaction_id': transaction_id,

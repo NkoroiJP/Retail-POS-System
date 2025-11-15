@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.views import LogoutView
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Sum, Count, Q
 from django.core.paginator import Paginator
 from decimal import Decimal
@@ -118,6 +119,7 @@ def pos_view(request):
 
 
 @login_required
+@csrf_exempt
 def process_sale(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Invalid request method'}, status=400)
