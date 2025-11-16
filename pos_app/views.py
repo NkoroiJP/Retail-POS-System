@@ -16,6 +16,7 @@ from .models import User, Store, Category, Product, Inventory, Transaction, Tran
 from .utils import (can_manage_inventory, can_view_reports, can_process_sales, 
                    can_transfer_inventory, can_approve_transfers)
 import uuid
+import csv
 
 
 def login_view(request):
@@ -40,6 +41,10 @@ class CustomLogoutView(LogoutView):
 @login_required
 def dashboard(request):
     user = request.user
+    
+    # Redirect technicians to their repair dashboard
+    if user.role == 'technician':
+        return redirect('repairs_dashboard')
     
     # For Director/Admin - show overall stats
     if user.role in ['director', 'admin']:
@@ -791,18 +796,29 @@ def sales_report(request):
         created_at__lt=end_date_obj
     )
     
+    # Get filter parameters
+    store_filter = request.GET.get('store', 'all')
+    user_filter = request.GET.get('user', 'all')
+    
     # Apply store filter based on user role
     if user.role == 'manager' and user.store:
         transactions = transactions.filter(store=user.store)
+        store_filter = str(user.store.id)
     elif user.role in ['director', 'admin']:
-        # For directors/admins, filter by store if provided in request
-        store_filter = request.GET.get('store')
-        if store_filter:
+        if store_filter and store_filter != 'all':
             try:
-                store_filter = int(store_filter)
-                transactions = transactions.filter(store_id=store_filter)
+                store_filter_id = int(store_filter)
+                transactions = transactions.filter(store_id=store_filter_id)
             except ValueError:
                 pass
+    
+    # Apply user filter
+    if user_filter and user_filter != 'all':
+        try:
+            user_filter_id = int(user_filter)
+            transactions = transactions.filter(user_id=user_filter_id)
+        except ValueError:
+            pass
     
     # Calculate summary statistics
     total_sales = transactions.aggregate(total=Sum('total_amount'))['total'] or 0
@@ -820,7 +836,21 @@ def sales_report(request):
     if user.role in ['director', 'admin']:
         available_stores = Store.objects.all()
     
-    # Top selling products (only for director/admin)
+    # Get available users for filter
+    available_users = []
+    if user.role in ['director', 'admin']:
+        if store_filter and store_filter != 'all':
+            try:
+                store_filter_id = int(store_filter)
+                available_users = User.objects.filter(store_id=store_filter_id).order_by('username')
+            except ValueError:
+                available_users = User.objects.all().order_by('username')
+        else:
+            available_users = User.objects.all().order_by('username')
+    elif user.role == 'manager' and user.store:
+        available_users = User.objects.filter(store=user.store).order_by('username')
+    
+    # Top selling products
     top_products = []
     if user.role in ['director', 'admin']:
         top_products = TransactionItem.objects.filter(
@@ -839,10 +869,94 @@ def sales_report(request):
             transaction_type='sale',
             created_at__gte=start_date_obj,
             created_at__lt=end_date_obj
-        ).values('store__name').annotate(
+        )
+        if user_filter and user_filter != 'all':
+            try:
+                user_filter_id = int(user_filter)
+                sales_by_store = sales_by_store.filter(user_id=user_filter_id)
+            except ValueError:
+                pass
+        sales_by_store = sales_by_store.values('store__name').annotate(
             total_sales=Sum('total_amount'),
             transaction_count=Count('id')
         )
+    
+    # Sales by user
+    sales_by_user = []
+    base_user_query = Transaction.objects.filter(
+        transaction_type='sale',
+        created_at__gte=start_date_obj,
+        created_at__lt=end_date_obj
+    )
+    
+    if user.role == 'manager' and user.store:
+        base_user_query = base_user_query.filter(store=user.store)
+    elif user.role in ['director', 'admin']:
+        if store_filter and store_filter != 'all':
+            try:
+                store_filter_id = int(store_filter)
+                base_user_query = base_user_query.filter(store_id=store_filter_id)
+            except ValueError:
+                pass
+    
+    sales_by_user = base_user_query.values('user__username', 'user__role').annotate(
+        total_sales=Sum('total_amount'),
+        transaction_count=Count('id'),
+        total_commission=Sum('commission')
+    ).order_by('-total_sales')
+    
+    # CSV Download
+    if request.GET.get('download') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        filename = f'sales_report_{start_date}_{end_date}.csv'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        writer = csv.writer(response)
+        
+        # Write summary
+        writer.writerow(['Sales Report'])
+        writer.writerow(['Date Range', f'{start_date} to {end_date}'])
+        writer.writerow(['Total Sales', f'KES {total_sales:.2f}'])
+        writer.writerow(['Total Transactions', total_transactions])
+        writer.writerow(['Average Transaction', f'KES {avg_transaction_value:.2f}'])
+        writer.writerow([])
+        
+        # Write sales by user
+        writer.writerow(['Sales by User'])
+        writer.writerow(['Username', 'Role', 'Total Sales (KES)', 'Transaction Count', 'Commission (KES)'])
+        for user_data in sales_by_user:
+            writer.writerow([
+                user_data['user__username'],
+                user_data['user__role'],
+                f"{user_data['total_sales']:.2f}",
+                user_data['transaction_count'],
+                f"{user_data.get('total_commission', 0):.2f}"
+            ])
+        writer.writerow([])
+        
+        # Write sales by store if applicable
+        if user.role in ['director', 'admin'] and sales_by_store:
+            writer.writerow(['Sales by Store'])
+            writer.writerow(['Store', 'Total Sales (KES)', 'Transaction Count'])
+            for store_data in sales_by_store:
+                writer.writerow([
+                    store_data['store__name'],
+                    f"{store_data['total_sales']:.2f}",
+                    store_data['transaction_count']
+                ])
+            writer.writerow([])
+        
+        # Write daily sales
+        writer.writerow(['Daily Sales'])
+        writer.writerow(['Date', 'Total Sales (KES)', 'Transaction Count'])
+        for day in daily_sales:
+            writer.writerow([
+                day['date'],
+                f"{day['daily_total']:.2f}",
+                day['transaction_count']
+            ])
+        
+        return response
     
     context = {
         'user': user,
@@ -854,7 +968,11 @@ def sales_report(request):
         'start_date': start_date,
         'end_date': end_date,
         'available_stores': available_stores,
+        'available_users': available_users,
         'sales_by_store': sales_by_store,
+        'sales_by_user': sales_by_user,
+        'store_filter': store_filter,
+        'user_filter': user_filter,
     }
     
     return render(request, 'pos_app/sales_report.html', context)
@@ -1033,3 +1151,475 @@ def view_receipt(request, transaction_id):
     }
     
     return render(request, 'pos_app/receipt.html', context)
+
+# ============================================
+# REPAIR MODULE VIEWS
+# ============================================
+
+@login_required
+def repairs_dashboard(request):
+    """Repair dashboard for technicians"""
+    if request.user.role != 'technician':
+        messages.error(request, 'Access denied. This module is for technicians only.')
+        return redirect('dashboard')
+    
+    from .models import Repair, RepairItem
+    
+    store = request.user.store
+    
+    # Get repair statistics
+    pending_repairs = Repair.objects.filter(technician=request.user, status='pending').count()
+    in_progress_repairs = Repair.objects.filter(technician=request.user, status='in_progress').count()
+    completed_today = Repair.objects.filter(
+        technician=request.user, 
+        status='completed',
+        completed_at__date=timezone.now().date()
+    ).count()
+    
+    # Get recent repairs
+    recent_repairs = Repair.objects.filter(technician=request.user).order_by('-created_at')[:10]
+    
+    # Calculate today's revenue
+    today_revenue = Repair.objects.filter(
+        technician=request.user,
+        completed_at__date=timezone.now().date(),
+        status__in=['completed', 'delivered']
+    ).aggregate(total=Sum('total_cost'))['total'] or 0
+    
+    context = {
+        'pending_repairs': pending_repairs,
+        'in_progress_repairs': in_progress_repairs,
+        'completed_today': completed_today,
+        'today_revenue': today_revenue,
+        'recent_repairs': recent_repairs,
+    }
+    
+    return render(request, 'pos_app/repairs_dashboard.html', context)
+
+
+@login_required
+def create_repair(request):
+    """Create a new repair job"""
+    if request.user.role != 'technician':
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+    
+    from .models import Repair, Product
+    
+    if request.method == 'POST':
+        try:
+            # Generate repair ID
+            repair_id = f"RPR-{timezone.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
+            
+            # Create repair
+            repair = Repair.objects.create(
+                repair_id=repair_id,
+                customer_name=request.POST.get('customer_name'),
+                customer_phone=request.POST.get('customer_phone'),
+                device_type=request.POST.get('device_type'),
+                device_imei=request.POST.get('device_imei', ''),
+                repair_type=request.POST.get('repair_type'),
+                issue_description=request.POST.get('issue_description'),
+                labour_charge=Decimal(request.POST.get('labour_charge', '0')),
+                technician_notes=request.POST.get('technician_notes', ''),
+                technician=request.user,
+                store=request.user.store,
+                status='pending'
+            )
+            
+            messages.success(request, f'Repair job {repair_id} created successfully!')
+            return redirect('repair_detail', repair_id=repair.repair_id)
+            
+        except Exception as e:
+            messages.error(request, f'Error creating repair: {str(e)}')
+    
+    context = {
+        'repair_types': Repair.REPAIR_TYPE_CHOICES,
+    }
+    
+    return render(request, 'pos_app/create_repair.html', context)
+
+
+@login_required
+def repair_detail(request, repair_id):
+    """View and update repair details"""
+    if request.user.role != 'technician':
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+    
+    from .models import Repair, RepairItem, Product, Inventory
+    
+    repair = get_object_or_404(Repair, repair_id=repair_id, technician=request.user)
+    repair_items = RepairItem.objects.filter(repair=repair)
+    
+    # Get available products for parts
+    products = Product.objects.filter(
+        inventory_items__store=request.user.store,
+        inventory_items__quantity__gt=0
+    ).distinct()
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add_part':
+            try:
+                product_id = request.POST.get('product_id')
+                quantity = int(request.POST.get('quantity', 1))
+                
+                product = Product.objects.get(id=product_id)
+                inventory = Inventory.objects.get(product=product, store=request.user.store)
+                
+                if inventory.quantity < quantity:
+                    messages.error(request, f'Insufficient stock for {product.name}')
+                else:
+                    # Create repair item
+                    repair_item = RepairItem.objects.create(
+                        repair=repair,
+                        product=product,
+                        quantity=quantity,
+                        unit_price=product.price
+                    )
+                    
+                    # Update inventory
+                    inventory.quantity -= quantity
+                    inventory.save()
+                    
+                    # Update repair parts cost
+                    repair.parts_cost += repair_item.total_price
+                    repair.save()
+                    
+                    messages.success(request, f'Added {product.name} to repair')
+                    
+            except Exception as e:
+                messages.error(request, f'Error adding part: {str(e)}')
+        
+        elif action == 'update_status':
+            new_status = request.POST.get('status')
+            repair.status = new_status
+            
+            if new_status == 'completed':
+                repair.completed_at = timezone.now()
+            elif new_status == 'delivered':
+                repair.delivered_at = timezone.now()
+            
+            repair.save()
+            messages.success(request, f'Repair status updated to {repair.get_status_display()}')
+        
+        elif action == 'update_labour':
+            try:
+                labour_charge = Decimal(request.POST.get('labour_charge', '0'))
+                repair.labour_charge = labour_charge
+                repair.save()
+                messages.success(request, 'Labour charge updated successfully')
+            except Exception as e:
+                messages.error(request, f'Error updating labour charge: {str(e)}')
+        
+        return redirect('repair_detail', repair_id=repair_id)
+    
+    context = {
+        'repair': repair,
+        'repair_items': repair_items,
+        'products': products,
+        'status_choices': Repair.STATUS_CHOICES,
+    }
+    
+    return render(request, 'pos_app/repair_detail.html', context)
+
+
+@login_required
+def repairs_list(request):
+    """List all repairs for technician"""
+    if request.user.role != 'technician':
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+    
+    from .models import Repair
+    
+    status_filter = request.GET.get('status', 'all')
+    
+    repairs = Repair.objects.filter(technician=request.user)
+    
+    if status_filter != 'all':
+        repairs = repairs.filter(status=status_filter)
+    
+    repairs = repairs.order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(repairs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'repairs': page_obj,
+        'status_filter': status_filter,
+        'status_choices': Repair.STATUS_CHOICES,
+    }
+    
+    return render(request, 'pos_app/repairs_list.html', context)
+
+
+@login_required
+@csrf_exempt
+def charge_repair(request, repair_id):
+    """Process payment for completed repair through POS"""
+    if request.user.role != 'technician':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid request method'}, status=400)
+    
+    from .models import Repair, Transaction, TransactionItem
+    
+    try:
+        repair = get_object_or_404(Repair, repair_id=repair_id, technician=request.user)
+        
+        if repair.status != 'completed':
+            return JsonResponse({'error': 'Repair must be completed before charging'}, status=400)
+        
+        # Create transaction for the repair
+        transaction_id = str(uuid.uuid4())
+        
+        # Calculate VAT
+        subtotal = repair.total_cost
+        vat_rate = Decimal('0.16')
+        vat_amount = subtotal * vat_rate
+        total_amount = subtotal + vat_amount
+        
+        # Calculate commission for technician
+        commission = total_amount * (request.user.commission_rate / 100)
+        
+        transaction = Transaction.objects.create(
+            transaction_id=transaction_id,
+            user=request.user,
+            store=request.user.store,
+            transaction_type='sale',
+            subtotal=subtotal,
+            total_amount=total_amount,
+            vat_amount=vat_amount,
+            commission=commission
+        )
+        
+        # Add repair items to transaction
+        for repair_item in repair.items.all():
+            TransactionItem.objects.create(
+                transaction=transaction,
+                product=repair_item.product,
+                quantity=repair_item.quantity,
+                unit_price=repair_item.unit_price,
+                total_price=repair_item.total_price
+            )
+        
+        # Update technician commission
+        request.user.total_commission += commission
+        request.user.save()
+        
+        # Mark repair as delivered
+        repair.status = 'delivered'
+        repair.delivered_at = timezone.now()
+        repair.save()
+        
+        return JsonResponse({
+            'success': True,
+            'transaction_id': transaction_id,
+            'repair_id': repair_id,
+            'subtotal': float(subtotal),
+            'vat_amount': float(vat_amount),
+            'total_amount': float(total_amount),
+            'labour_charge': float(repair.labour_charge),
+            'parts_cost': float(repair.parts_cost),
+            'commission': float(commission),
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def repair_receipt(request, repair_id):
+    """Generate receipt for repair job"""
+    if request.user.role != 'technician':
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+    
+    from .models import Repair, RepairItem
+    
+    repair = get_object_or_404(Repair, repair_id=repair_id)
+    repair_items = RepairItem.objects.filter(repair=repair)
+    
+    context = {
+        'repair': repair,
+        'repair_items': repair_items,
+        'vat_rate': 16,
+        'vat_amount': repair.total_cost * Decimal('0.16'),
+        'grand_total': repair.total_cost * Decimal('1.16'),
+    }
+    
+    return render(request, 'pos_app/repair_receipt.html', context)
+
+
+# ============================================
+# MANAGER/DIRECTOR REPAIR VIEWS
+# ============================================
+
+@login_required
+def manager_repairs_view(request):
+    """View all repairs for managers and directors"""
+    if request.user.role not in ['director', 'admin', 'manager']:
+        messages.error(request, 'Access denied. This view is for managers and directors only.')
+        return redirect('dashboard')
+    
+    from .models import Repair
+    
+    # Filter based on role
+    if request.user.role in ['director', 'admin']:
+        repairs = Repair.objects.all()
+    elif request.user.role == 'manager':
+        repairs = Repair.objects.filter(store=request.user.store)
+    else:
+        repairs = Repair.objects.none()
+    
+    # Apply filters
+    status_filter = request.GET.get('status', 'all')
+    technician_filter = request.GET.get('technician', 'all')
+    
+    if status_filter != 'all':
+        repairs = repairs.filter(status=status_filter)
+    
+    if technician_filter != 'all':
+        repairs = repairs.filter(technician_id=technician_filter)
+    
+    repairs = repairs.select_related('technician', 'store').order_by('-created_at')
+    
+    # Get technicians for filter dropdown
+    if request.user.role in ['director', 'admin']:
+        technicians = User.objects.filter(role='technician')
+    else:
+        technicians = User.objects.filter(role='technician', store=request.user.store)
+    
+    # Pagination
+    paginator = Paginator(repairs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Statistics
+    total_repairs = repairs.count()
+    pending_count = repairs.filter(status='pending').count()
+    in_progress_count = repairs.filter(status='in_progress').count()
+    completed_count = repairs.filter(status='completed').count()
+    delivered_count = repairs.filter(status='delivered').count()
+    
+    total_revenue = repairs.filter(status='delivered').aggregate(
+        total=Sum('total_cost')
+    )['total'] or 0
+    
+    context = {
+        'repairs': page_obj,
+        'status_filter': status_filter,
+        'technician_filter': technician_filter,
+        'status_choices': Repair.STATUS_CHOICES,
+        'technicians': technicians,
+        'total_repairs': total_repairs,
+        'pending_count': pending_count,
+        'in_progress_count': in_progress_count,
+        'completed_count': completed_count,
+        'delivered_count': delivered_count,
+        'total_revenue': total_revenue,
+    }
+    
+    return render(request, 'pos_app/manager_repairs_view.html', context)
+
+
+@login_required
+def manager_repair_detail(request, repair_id):
+    """View repair details for managers/directors (read-only)"""
+    if request.user.role not in ['director', 'admin', 'manager']:
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+    
+    from .models import Repair, RepairItem
+    
+    repair = get_object_or_404(Repair, repair_id=repair_id)
+    
+    # Check permission for managers
+    if request.user.role == 'manager' and repair.store != request.user.store:
+        messages.error(request, 'You can only view repairs from your store.')
+        return redirect('manager_repairs_view')
+    
+    repair_items = RepairItem.objects.filter(repair=repair)
+    
+    # Get related transaction if delivered
+    transaction = None
+    if repair.status == 'delivered':
+        # Find transaction created around the same time
+        from datetime import timedelta
+        transaction = Transaction.objects.filter(
+            user=repair.technician,
+            store=repair.store,
+            created_at__gte=repair.delivered_at - timedelta(minutes=5),
+            created_at__lte=repair.delivered_at + timedelta(minutes=5),
+            total_amount=repair.total_cost * Decimal('1.16')  # Including VAT
+        ).first()
+    
+    context = {
+        'repair': repair,
+        'repair_items': repair_items,
+        'transaction': transaction,
+        'is_manager_view': True,
+        'vat_amount': repair.total_cost * Decimal('0.16'),
+        'grand_total': repair.total_cost * Decimal('1.16'),
+    }
+    
+    return render(request, 'pos_app/manager_repair_detail.html', context)
+
+
+# ============================================
+# USER MANAGEMENT VIEWS
+# ============================================
+
+@login_required
+def users_list(request):
+    """View all users - directors see all, managers see their store's users"""
+    if request.user.role not in ['director', 'admin', 'manager']:
+        messages.error(request, 'Access denied. This view is for managers and directors only.')
+        return redirect('dashboard')
+    
+    # Filter based on role
+    if request.user.role in ['director', 'admin']:
+        users = User.objects.all().select_related('store')
+    elif request.user.role == 'manager':
+        users = User.objects.filter(store=request.user.store).select_related('store')
+    else:
+        users = User.objects.none()
+    
+    # Apply filters
+    role_filter = request.GET.get('role', 'all')
+    store_filter = request.GET.get('store', 'all')
+    
+    if role_filter != 'all':
+        users = users.filter(role=role_filter)
+    
+    if store_filter != 'all' and request.user.role in ['director', 'admin']:
+        users = users.filter(store_id=store_filter)
+    
+    users = users.order_by('role', 'username')
+    
+    # Get stores for filter dropdown (directors only)
+    stores = Store.objects.all() if request.user.role in ['director', 'admin'] else []
+    
+    # Statistics
+    total_users = users.count()
+    by_role = {}
+    for role_code, role_name in User.USER_ROLE_CHOICES:
+        by_role[role_name] = users.filter(role=role_code).count()
+    
+    context = {
+        'users': users,
+        'role_filter': role_filter,
+        'store_filter': store_filter,
+        'role_choices': User.USER_ROLE_CHOICES,
+        'stores': stores,
+        'total_users': total_users,
+        'by_role': by_role,
+    }
+    
+    return render(request, 'pos_app/users_list.html', context)

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}Repair Receipt - {{ repair.repair_id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card" id="receipt">
+                <div class="card-body p-5">
+                    <!-- Header -->
+                    <div class="text-center border-bottom pb-3 mb-4">
+                        <h3 class="mb-1">REPAIR RECEIPT</h3>
+                        <p class="text-muted mb-0">{{ repair.store.name }}</p>
+                        <p class="text-muted mb-0">{{ repair.store.address }}</p>
+                        <p class="text-muted">{{ repair.store.phone }} | {{ repair.store.email }}</p>
+                    </div>
+                    
+                    <!-- Receipt Info -->
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <p class="mb-1"><strong>Repair ID:</strong> {{ repair.repair_id }}</p>
+                            <p class="mb-1"><strong>Date:</strong> {{ repair.created_at|date:"M d, Y H:i" }}</p>
+                            <p class="mb-1"><strong>Status:</strong> 
+                                <span class="badge bg-{{ repair.status == 'completed' and 'success' or 'primary' }}">
+                                    {{ repair.get_status_display }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-6 text-end">
+                            <p class="mb-1"><strong>Customer:</strong> {{ repair.customer_name }}</p>
+                            <p class="mb-1"><strong>Phone:</strong> {{ repair.customer_phone }}</p>
+                            <p class="mb-1"><strong>Technician:</strong> {{ repair.technician.get_full_name|default:repair.technician.username }}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Device Info -->
+                    <div class="bg-light p-3 rounded mb-4">
+                        <h6 class="mb-2">Device Information</h6>
+                        <p class="mb-1"><strong>Device:</strong> {{ repair.device_type }}</p>
+                        <p class="mb-1"><strong>IMEI:</strong> {{ repair.device_imei|default:"N/A" }}</p>
+                        <p class="mb-1"><strong>Repair Type:</strong> {{ repair.get_repair_type_display }}</p>
+                        <p class="mb-0"><strong>Issue:</strong> {{ repair.issue_description }}</p>
+                    </div>
+                    
+                    <!-- Parts Used -->
+                    {% if repair_items %}
+                    <h6 class="mb-3">Parts & Materials</h6>
+                    <table class="table table-sm mb-4">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in repair_items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td class="text-center">{{ item.quantity }}</td>
+                                <td class="text-end">KES {{ item.unit_price|floatformat:2 }}</td>
+                                <td class="text-end">KES {{ item.total_price|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+                    
+                    <!-- Cost Breakdown -->
+                    <div class="row">
+                        <div class="col-7"></div>
+                        <div class="col-5">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Parts Cost:</td>
+                                    <td class="text-end">KES {{ repair.parts_cost|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Labour Charge:</td>
+                                    <td class="text-end">KES {{ repair.labour_charge|floatformat:2 }}</td>
+                                </tr>
+                                <tr class="border-top">
+                                    <td><strong>Subtotal:</strong></td>
+                                    <td class="text-end"><strong>KES {{ repair.total_cost|floatformat:2 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>VAT ({{ vat_rate }}%):</td>
+                                    <td class="text-end">KES {{ vat_amount|floatformat:2 }}</td>
+                                </tr>
+                                <tr class="border-top">
+                                    <td><h5 class="mb-0">TOTAL:</h5></td>
+                                    <td class="text-end"><h5 class="mb-0">KES {{ grand_total|floatformat:2 }}</h5></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="text-center border-top pt-3 mt-4">
+                        <p class="text-muted small mb-1">Thank you for your business!</p>
+                        <p class="text-muted small mb-0">Warranty: 30 days on parts and labour</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="text-center mt-3 no-print">
+                <button onclick="window.print()" class="btn btn-primary me-2">
+                    <i class="fas fa-print me-2"></i>Print Receipt
+                </button>
+                <a href="{% url 'repair_detail' repair.repair_id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Repair
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    body {
+        background: white !important;
+    }
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+}
+</style>
+{% endblock %}

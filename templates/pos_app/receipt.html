@@ -3,57 +3,94 @@
 <head>
     <title>Receipt - {{ transaction.transaction_id }}</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: 'Inter', Arial, sans-serif;
             font-size: 12px;
-            line-height: 1.5;
-            max-width: 600px;
+            line-height: 1.6;
+            max-width: 650px;
             margin: 0 auto;
             padding: 20px;
             background: #f8f9fa;
+            color: #333;
         }
         .receipt-container {
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            padding: 25px;
+            padding: 30px;
             margin: 20px auto;
         }
         .receipt-header {
             text-align: center;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #4361ee;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #4361ee;
         }
         .receipt-title {
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 700;
             color: #4361ee;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         .store-info {
-            margin: 10px 0;
+            margin: 12px 0;
             text-align: center;
+            line-height: 1.8;
         }
         .store-name {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 700;
             color: #333;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
         .store-address {
             color: #666;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
         .store-contact {
             color: #666;
-            font-size: 12px;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+        .tax-id {
+            color: #888;
+            font-size: 11px;
+            margin-top: 8px;
+            font-weight: 500;
         }
         .receipt-details {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
             margin-bottom: 20px;
-            padding: 0 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #4361ee;
+        }
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .detail-label {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .detail-value {
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
         }
         .receipt-number {
             font-weight: 600;
@@ -64,65 +101,166 @@
             color: #333;
         }
         .cashier-info {
-            font-style: italic;
-            color: #666;
             text-align: center;
-            margin: 10px 0;
+            margin: 15px 0;
+            padding: 10px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 6px;
+        }
+        .cashier-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .cashier-name {
+            font-weight: 600;
+            color: #333;
+            margin-top: 4px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-radius: 8px;
+            overflow: hidden;
         }
         th {
-            background: #4361ee;
+            background: linear-gradient(135deg, #4361ee, #3f37c9);
             color: white;
             font-weight: 600;
-            padding: 10px;
+            padding: 12px 10px;
             text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #eee;
+            padding: 10px;
+            border-bottom: 1px solid #e9ecef;
         }
         tr:last-child td {
             border-bottom: none;
         }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .item-sku {
+            font-size: 10px;
+            color: #888;
+            font-family: monospace;
+        }
+        .item-name {
+            font-weight: 500;
+            color: #333;
+        }
         .total-section {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
+            margin-top: 25px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
             border-radius: 8px;
+            border-top: 3px solid #4361ee;
         }
         .total-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            padding: 5px 0;
         }
         .total-row:last-child {
             margin-bottom: 0;
-            padding-top: 8px;
-            border-top: 1px solid #ddd;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px solid #dee2e6;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 16px;
+            color: #4361ee;
+        }
+        .payment-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+        }
+        .payment-title {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        .payment-method {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+        .payment-label {
+            color: #666;
+            font-size: 13px;
+        }
+        .payment-value {
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
         }
         .footer {
             text-align: center;
-            margin-top: 25px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #dee2e6;
             color: #666;
         }
         .thank-you {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 600;
             color: #4361ee;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
         .footer-note {
             font-size: 11px;
             color: #888;
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        .return-policy {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 6px;
+        }
+        .policy-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        .policy-text {
+            color: #856404;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+        .proof-notice {
+            margin-top: 15px;
+            padding: 12px;
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            border-radius: 6px;
+        }
+        .proof-title {
+            font-weight: 600;
+            color: #0c5460;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+        .proof-text {
+            color: #0c5460;
+            font-size: 11px;
+            line-height: 1.6;
         }
         .action-buttons {
             text-align: center;
@@ -165,48 +303,79 @@
 </head>
 <body>
     <div class="receipt-container">
+        <!-- Header with Business Identification -->
         <div class="receipt-header">
             <div class="receipt-title">SALES RECEIPT</div>
             <div class="store-info">
                 <div class="store-name">{{ transaction.store.name }}</div>
                 <div class="store-address">{{ transaction.store.address }}</div>
-                <div class="store-contact">{{ transaction.store.phone }} | {{ transaction.store.email }}</div>
+                <div class="store-contact">
+                    Tel: {{ transaction.store.phone }} | Email: {{ transaction.store.email }}
+                    {% if transaction.store.website %}<br>Website: {{ transaction.store.website }}{% endif %}
+                </div>
+                {% if transaction.store.tax_id %}
+                <div class="tax-id">TAX ID / VAT No: {{ transaction.store.tax_id }}</div>
+                {% endif %}
             </div>
         </div>
         
+        <!-- Transaction Details -->
         <div class="receipt-details">
-            <div class="receipt-number">Receipt #: {{ transaction.transaction_id }}</div>
-            <div class="receipt-date">Date: {{ transaction.created_at|date:"M d, Y H:i" }}</div>
+            <div class="detail-item">
+                <div class="detail-label">Receipt Number</div>
+                <div class="detail-value">{{ transaction.transaction_id|slice:":8"|upper }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Date & Time</div>
+                <div class="detail-value">{{ transaction.created_at|date:"M d, Y H:i" }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Transaction Type</div>
+                <div class="detail-value">{{ transaction.get_transaction_type_display }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Store Location</div>
+                <div class="detail-value">{{ transaction.store.name }}</div>
+            </div>
         </div>
         
+        <!-- Sales Associate / Cashier Information -->
         <div class="cashier-info">
-            Cashier: {{ transaction.user.get_full_name|default:transaction.user.username }}
+            <div class="cashier-label">Served By</div>
+            <div class="cashier-name">{{ transaction.user.get_full_name|default:transaction.user.username }} (ID: {{ transaction.user.id }})</div>
         </div>
         
+        <!-- Itemized List of Purchases -->
         <table>
             <thead>
                 <tr>
-                    <th>Item</th>
-                    <th>Qty</th>
-                    <th>Unit Price</th>
-                    <th>Total</th>
+                    <th style="width: 40%;">Item Description</th>
+                    <th style="width: 15%; text-align: center;">Qty</th>
+                    <th style="width: 22%; text-align: right;">Unit Price</th>
+                    <th style="width: 23%; text-align: right;">Total</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td>{{ item.product.name }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>KES {{ item.unit_price|floatformat:2 }}</td>
-                    <td>KES {{ item.total_price|floatformat:2 }}</td>
+                    <td>
+                        <div class="item-name">{{ item.product.name }}</div>
+                        {% if item.product.sku %}
+                        <div class="item-sku">SKU: {{ item.product.sku }}</div>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">{{ item.quantity }}</td>
+                    <td style="text-align: right;">KES {{ item.unit_price|floatformat:2 }}</td>
+                    <td style="text-align: right;"><strong>KES {{ item.total_price|floatformat:2 }}</strong></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         
+        <!-- Financial Summary -->
         <div class="total-section">
             <div class="total-row">
-                <span>Subtotal:</span>
+                <span>Subtotal (Excl. VAT):</span>
                 <span>KES {{ transaction.subtotal|floatformat:2 }}</span>
             </div>
             <div class="total-row">
@@ -214,14 +383,59 @@
                 <span>KES {{ transaction.vat_amount|floatformat:2 }}</span>
             </div>
             <div class="total-row">
-                <span><strong>Total:</strong></span>
+                <span><strong>TOTAL AMOUNT:</strong></span>
                 <span><strong>KES {{ transaction.total_amount|floatformat:2 }}</strong></span>
             </div>
         </div>
         
+        <!-- Payment Details -->
+        {% if transaction.payment_method %}
+        <div class="payment-info">
+            <div class="payment-title">Payment Information</div>
+            <div class="payment-method">
+                <span class="payment-label">Payment Method:</span>
+                <span class="payment-value">{{ transaction.get_payment_method_display|default:"Cash" }}</span>
+            </div>
+            {% if transaction.card_last_four %}
+            <div class="payment-method">
+                <span class="payment-label">Card Number:</span>
+                <span class="payment-value">**** **** **** {{ transaction.card_last_four }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Footer with Policies and Notices -->
         <div class="footer">
-            <div class="thank-you">Thank you for your business!</div>
-            <div class="footer-note">This receipt is proof of purchase. Please keep for your records.</div>
+            <div class="thank-you">Thank You for Your Business!</div>
+            <div class="footer-note">We appreciate your patronage and look forward to serving you again.</div>
+            
+            <!-- Return/Exchange Policy -->
+            <div class="return-policy">
+                <div class="policy-title">📋 RETURN & EXCHANGE POLICY</div>
+                <div class="policy-text">
+                    • Items may be returned or exchanged within <strong>{{ transaction.store.return_policy_days|default:"7" }} days</strong> of purchase<br>
+                    • Original receipt and packaging required<br>
+                    • Items must be unused and in original condition<br>
+                    • No returns on sale or discounted items<br>
+                    • Bring this receipt for all returns and exchanges
+                </div>
+            </div>
+            
+            <!-- Proof of Purchase Notice -->
+            <div class="proof-notice">
+                <div class="proof-title">📄 PROOF OF PURCHASE</div>
+                <div class="proof-text">
+                    This receipt serves as your official proof of purchase. Please retain it for warranty claims, repairs, replacements, or refunds. 
+                    For any inquiries, please contact us at {{ transaction.store.phone }} or {{ transaction.store.email }} quoting receipt number <strong>{{ transaction.transaction_id|slice:":8"|upper }}</strong>.
+                </div>
+            </div>
+            
+            <div class="footer-note" style="margin-top: 20px;">
+                Generated on {{ transaction.created_at|date:"M d, Y" }} at {{ transaction.created_at|date:"H:i" }}<br>
+                All prices are in Kenya Shillings (KES) and include applicable taxes<br>
+                This is a computer-generated receipt and is valid without signature
+            </div>
         </div>
         
         <div class="action-buttons">

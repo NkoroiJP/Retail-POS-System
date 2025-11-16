@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
-from .models import User, Store, Category, Product, Inventory, Transaction, TransactionItem, InventoryTransfer
+from .models import User, Store, Category, Product, Inventory, Transaction, TransactionItem, InventoryTransfer, Repair, RepairItem
 
 
 class CustomUserAdmin(UserAdmin):
@@ -88,6 +88,24 @@ class InventoryTransferAdmin(admin.ModelAdmin):
     search_fields = ('product__name', 'from_store__name', 'to_store__name', 'requested_by__username')
     list_per_page = 20
     readonly_fields = ('request_date', 'approval_date')
+
+
+@admin.register(Repair)
+class RepairAdmin(admin.ModelAdmin):
+    list_display = ('repair_id', 'customer_name', 'device_type', 'repair_type', 'status', 'technician', 'total_cost', 'created_at')
+    list_filter = ('status', 'repair_type', 'technician', 'store', 'created_at')
+    search_fields = ('repair_id', 'customer_name', 'customer_phone', 'device_type', 'device_imei')
+    readonly_fields = ('repair_id', 'created_at', 'total_cost')
+    list_per_page = 20
+
+
+@admin.register(RepairItem)
+class RepairItemAdmin(admin.ModelAdmin):
+    list_display = ('repair', 'product', 'quantity', 'unit_price', 'total_price')
+    list_filter = ('repair__created_at', 'product')
+    search_fields = ('repair__repair_id', 'product__name')
+    readonly_fields = ('total_price',)
+    list_per_page = 20
 
 
 admin.site.register(User, CustomUserAdmin)

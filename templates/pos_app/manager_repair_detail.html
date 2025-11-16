@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block title %}Repair Details - {{ repair.repair_id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-tools me-2"></i>Repair Details (Read-Only)</h2>
+                <p class="text-muted mb-0">{{ repair.repair_id }} - {{ repair.device_type }}</p>
+            </div>
+            <div>
+                <a href="{% url 'manager_repairs_view' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Repairs
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column - Repair Details -->
+    <div class="col-lg-8">
+        <!-- Customer & Device Info -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-user me-2"></i>Customer & Device Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Customer Name:</strong> {{ repair.customer_name }}</p>
+                        <p><strong>Phone:</strong> {{ repair.customer_phone }}</p>
+                        <p><strong>Technician:</strong> {{ repair.technician.get_full_name|default:repair.technician.username }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Device:</strong> {{ repair.device_type }}</p>
+                        <p><strong>IMEI:</strong> {{ repair.device_imei|default:"N/A" }}</p>
+                        <p><strong>Store:</strong> {{ repair.store.name }}</p>
+                    </div>
+                </div>
+                <p><strong>Repair Type:</strong> <span class="badge bg-secondary">{{ repair.get_repair_type_display }}</span></p>
+                <p><strong>Issue Description:</strong></p>
+                <p class="bg-light p-3 rounded">{{ repair.issue_description }}</p>
+                {% if repair.technician_notes %}
+                <p><strong>Technician Notes:</strong></p>
+                <p class="bg-light p-3 rounded">{{ repair.technician_notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Parts Used -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-box me-2"></i>Parts Used</h5>
+            </div>
+            <div class="card-body">
+                {% if repair_items %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Part/Product</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in repair_items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>KES {{ item.unit_price|floatformat:2 }}</td>
+                                <td>KES {{ item.total_price|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="table-light">
+                                <td colspan="3" class="text-end"><strong>Parts Subtotal:</strong></td>
+                                <td><strong>KES {{ repair.parts_cost|floatformat:2 }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">No parts used</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Transaction Details -->
+        {% if transaction %}
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-receipt me-2"></i>Transaction Details</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Transaction ID:</strong> {{ transaction.transaction_id }}</p>
+                <p><strong>Date:</strong> {{ transaction.created_at|date:"M d, Y H:i" }}</p>
+                <p><strong>Subtotal:</strong> KES {{ transaction.subtotal|floatformat:2 }}</p>
+                <p><strong>VAT (16%):</strong> KES {{ transaction.vat_amount|floatformat:2 }}</p>
+                <p><strong>Total Amount:</strong> KES {{ transaction.total_amount|floatformat:2 }}</p>
+                <p><strong>Commission Paid:</strong> KES {{ transaction.commission|floatformat:2 }}</p>
+                <a href="{% url 'view_receipt' transaction.transaction_id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                    <i class="fas fa-receipt me-2"></i>View Transaction Receipt
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Timeline -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-history me-2"></i>Timeline</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-plus-circle text-primary me-2"></i>
+                        <strong>Created:</strong> {{ repair.created_at|date:"M d, Y H:i" }}
+                    </li>
+                    {% if repair.completed_at %}
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong>Completed:</strong> {{ repair.completed_at|date:"M d, Y H:i" }}
+                    </li>
+                    {% endif %}
+                    {% if repair.delivered_at %}
+                    <li class="mb-2">
+                        <i class="fas fa-handshake text-primary me-2"></i>
+                        <strong>Delivered:</strong> {{ repair.delivered_at|date:"M d, Y H:i" }}
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column - Summary -->
+    <div class="col-lg-4">
+        <!-- Status Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-info-circle me-2"></i>Status</h6>
+            </div>
+            <div class="card-body">
+                <h4 class="mb-3">
+                    {% if repair.status == 'pending' %}
+                        <span class="badge bg-warning">Pending</span>
+                    {% elif repair.status == 'in_progress' %}
+                        <span class="badge bg-info">In Progress</span>
+                    {% elif repair.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                    {% elif repair.status == 'delivered' %}
+                        <span class="badge bg-primary">Delivered</span>
+                    {% elif repair.status == 'cancelled' %}
+                        <span class="badge bg-danger">Cancelled</span>
+                    {% endif %}
+                </h4>
+            </div>
+        </div>
+        
+        <!-- Cost Summary -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-calculator me-2"></i>Cost Breakdown</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Parts Cost:</span>
+                    <strong>KES {{ repair.parts_cost|floatformat:2 }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                    <span>Labour Charge:</span>
+                    <strong>KES {{ repair.labour_charge|floatformat:2 }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Subtotal:</strong>
+                    <h5 class="mb-0">KES {{ repair.total_cost|floatformat:2 }}</h5>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">VAT (16%):</span>
+                    <span class="text-muted">KES {{ vat_amount|floatformat:2 }}</span>
+                </div>
+                <div class="d-flex justify-content-between border-top pt-2">
+                    <strong>Grand Total:</strong>
+                    <h4 class="text-primary mb-0">KES {{ grand_total|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-bolt me-2"></i>Actions</h6>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'repair_receipt' repair.repair_id %}" class="btn btn-outline-primary w-100 mb-2" target="_blank">
+                    <i class="fas fa-receipt me-2"></i>View Repair Receipt
+                </a>
+                
+                {% if transaction %}
+                <a href="{% url 'view_receipt' transaction.transaction_id %}" class="btn btn-outline-success w-100 mb-2" target="_blank">
+                    <i class="fas fa-file-invoice me-2"></i>View Transaction Receipt
+                </a>
+                {% endif %}
+                
+                <a href="{% url 'manager_repairs_view' %}" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Repairs
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <i class="fas fa-info-circle me-2"></i>
+    <strong>Note:</strong> This is a read-only view. Only the technician ({{ repair.technician.get_full_name|default:repair.technician.username }}) can modify this repair{% if repair.status == 'delivered' or repair.status == 'cancelled' %}, but it has been {{ repair.get_status_display|lower }} and is now locked{% endif %}.
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Custom filter for template - multiply
+(function() {
+    const mul = function(value, arg) {
+        return parseFloat(value) * parseFloat(arg);
+    };
+})();
+</script>
+{% endblock %}

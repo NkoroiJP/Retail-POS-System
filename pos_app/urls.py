@@ -18,7 +18,21 @@ urlpatterns = [
     path('receipt/<str:transaction_id>/download/', views.generate_receipt, name='generate_receipt'),
     path('add_inventory/', views.add_inventory, name='add_inventory'),
     path('create_user/', views.create_user, name='create_user'),
+    path('users/', views.users_list, name='users_list'),
     path('add_product/', views.add_product, name='add_product'),
     path('stock_take/', views.stock_take, name='stock_take'),
+    
+    # Repair module URLs
+    path('repairs/', views.repairs_dashboard, name='repairs_dashboard'),
+    path('repairs/list/', views.repairs_list, name='repairs_list'),
+    path('repairs/create/', views.create_repair, name='create_repair'),
+    path('repairs/<str:repair_id>/', views.repair_detail, name='repair_detail'),
+    path('repairs/<str:repair_id>/charge/', views.charge_repair, name='charge_repair'),
+    path('repairs/<str:repair_id>/receipt/', views.repair_receipt, name='repair_receipt'),
+    
+    # Manager/Director repair views
+    path('manage/repairs/', views.manager_repairs_view, name='manager_repairs_view'),
+    path('manage/repairs/<str:repair_id>/', views.manager_repair_detail, name='manager_repair_detail'),
+    
     path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
 ]

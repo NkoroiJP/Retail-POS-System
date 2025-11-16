@@ -15,20 +15,63 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-6">
-        <form method="GET" class="row g-2">
-            <div class="col-md-5">
-                <label for="start_date" class="form-label">Start Date</label>
-                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" id="filterForm" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                    </div>
+                    {% if user.role in 'director,admin' %}
+                    <div class="col-md-3">
+                        <label for="store_filter" class="form-label">Store</label>
+                        <select class="form-select" id="store_filter" name="store">
+                            <option value="all" {% if store_filter == 'all' %}selected{% endif %}>All Stores</option>
+                            {% for store in available_stores %}
+                            <option value="{{ store.id }}" {% if store_filter == store.id|stringformat:"s" %}selected{% endif %}>{{ store.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="user_filter" class="form-label">User</label>
+                        <select class="form-select" id="user_filter" name="user">
+                            <option value="all" {% if user_filter == 'all' %}selected{% endif %}>All Users</option>
+                            {% for usr in available_users %}
+                            <option value="{{ usr.id }}" {% if user_filter == usr.id|stringformat:"s" %}selected{% endif %}>{{ usr.username }} ({{ usr.get_role_display }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% elif user.role == 'manager' %}
+                    <div class="col-md-3">
+                        <label for="user_filter" class="form-label">User</label>
+                        <select class="form-select" id="user_filter" name="user">
+                            <option value="all" {% if user_filter == 'all' %}selected{% endif %}>All Store Users</option>
+                            {% for usr in available_users %}
+                            <option value="{{ usr.id }}" {% if user_filter == usr.id|stringformat:"s" %}selected{% endif %}>{{ usr.username }} ({{ usr.get_role_display }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3"></div>
+                    {% endif %}
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-filter me-1"></i>Apply Filters
+                        </button>
+                        <a href="{% url 'sales_report' %}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-redo me-1"></i>Reset
+                        </a>
+                        <button type="button" class="btn btn-success" onclick="downloadCSV()">
+                            <i class="fas fa-download me-1"></i>Download CSV
+                        </button>
+                    </div>
+                </form>
             </div>
-            <div class="col-md-5">
-                <label for="end_date" class="form-label">End Date</label>
-                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">Filter</button>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -122,34 +165,111 @@
 
 {% if user.role in 'director,admin' %}
 <div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-store me-2"></i>Sales by Store</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Store</th>
+                                <th>Total Sales</th>
+                                <th>Transaction Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for store_data in sales_by_store %}
+                            <tr>
+                                <td>{{ store_data.store__name }}</td>
+                                <td><strong>KES {{ store_data.total_sales|floatformat:2 }}</strong></td>
+                                <td>{{ store_data.transaction_count }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">No sales data available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-user-tie me-2"></i>Sales by User</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Total Sales</th>
+                                <th>Transactions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user_data in sales_by_user %}
+                            <tr>
+                                <td>{{ user_data.user__username }}</td>
+                                <td><span class="badge bg-secondary">{{ user_data.user__role }}</span></td>
+                                <td><strong>KES {{ user_data.total_sales|floatformat:2 }}</strong></td>
+                                <td>{{ user_data.transaction_count }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No sales data available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif user.role == 'manager' %}
+<div class="row mt-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5>Sales by Store</h5>
+                <h5><i class="fas fa-user-tie me-2"></i>Sales by User ({{ user.store.name }})</h5>
             </div>
             <div class="card-body">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Store</th>
-                            <th>Total Sales</th>
-                            <th>Transaction Count</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for store_data in sales_by_store %}
-                        <tr>
-                            <td>{{ store_data.store__name }}</td>
-                            <td>${{ store_data.total_sales|floatformat:2 }}</td>
-                            <td>{{ store_data.transaction_count }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3">No sales data available</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Total Sales</th>
+                                <th>Transaction Count</th>
+                                <th>Commission Earned</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user_data in sales_by_user %}
+                            <tr>
+                                <td>{{ user_data.user__username }}</td>
+                                <td><span class="badge bg-secondary">{{ user_data.user__role }}</span></td>
+                                <td><strong>KES {{ user_data.total_sales|floatformat:2 }}</strong></td>
+                                <td>{{ user_data.transaction_count }}</td>
+                                <td><strong>KES {{ user_data.total_commission|floatformat:2 }}</strong></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No sales data available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -196,5 +316,12 @@
             }
         }
     });
+
+    // CSV Download Function
+    function downloadCSV() {
+        const params = new URLSearchParams(window.location.search);
+        params.set('download', 'csv');
+        window.location.href = '{% url "sales_report" %}?' + params.toString();
+    }
 </script>
 {% endblock %}

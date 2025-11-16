@@ -34,26 +34,34 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'dashboard' %}"><i class="fas fa-tachometer-alt me-1"></i> Dashboard</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'inventory' %}"><i class="fas fa-boxes me-1"></i> Inventory</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="inventoryDropdownAdmin" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-boxes me-1"></i> Inventory
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="inventoryDropdownAdmin">
+                                <li><a class="dropdown-item" href="{% url 'inventory' %}"><i class="fas fa-list me-2"></i>View Inventory</a></li>
+                                <li><a class="dropdown-item" href="{% url 'add_inventory' %}"><i class="fas fa-plus-circle me-2"></i>Add Inventory</a></li>
+                                <li><a class="dropdown-item" href="{% url 'add_product' %}"><i class="fas fa-plus-square me-2"></i>Add Product</a></li>
+                                <li><a class="dropdown-item" href="{% url 'inventory_transfer' %}"><i class="fas fa-exchange-alt me-2"></i>Transfers</a></li>
+                            </ul>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'add_inventory' %}"><i class="fas fa-plus-circle me-1"></i> Add Inventory</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'add_product' %}"><i class="fas fa-plus-square me-1"></i> Add Product</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'create_user' %}"><i class="fas fa-user-plus me-1"></i> Create User</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="usersDropdownAdmin" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-users me-1"></i> Users
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="usersDropdownAdmin">
+                                <li><a class="dropdown-item" href="{% url 'users_list' %}"><i class="fas fa-list me-2"></i>All Users</a></li>
+                                <li><a class="dropdown-item" href="{% url 'create_user' %}"><i class="fas fa-user-plus me-2"></i>Create User</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'sales_report' %}"><i class="fas fa-chart-bar me-1"></i> Reports</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'inventory_transfer' %}"><i class="fas fa-exchange-alt me-1"></i> Transfers</a>
+                            <a class="nav-link" href="{% url 'view_receipts' %}"><i class="fas fa-receipt me-1"></i> Receipts</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'view_receipts' %}"><i class="fas fa-receipt me-1"></i> Receipts</a>
+                            <a class="nav-link" href="{% url 'manager_repairs_view' %}"><i class="fas fa-tools me-1"></i> Repairs</a>
                         </li>
                     {% elif user.role == 'manager' %}
                         <li class="nav-item">
@@ -62,26 +70,35 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'pos' %}"><i class="fas fa-cash-register me-1"></i> POS</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'inventory' %}"><i class="fas fa-boxes me-1"></i> Inventory</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="inventoryDropdownMgr" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-boxes me-1"></i> Inventory
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="inventoryDropdownMgr">
+                                <li><a class="dropdown-item" href="{% url 'inventory' %}"><i class="fas fa-list me-2"></i>View Inventory</a></li>
+                                <li><a class="dropdown-item" href="{% url 'add_inventory' %}"><i class="fas fa-plus-circle me-2"></i>Add Inventory</a></li>
+                                <li><a class="dropdown-item" href="{% url 'add_product' %}"><i class="fas fa-plus-square me-2"></i>Add Product</a></li>
+                                <li><a class="dropdown-item" href="{% url 'inventory_transfer' %}"><i class="fas fa-exchange-alt me-2"></i>Transfers</a></li>
+                                <li><a class="dropdown-item" href="{% url 'stock_take' %}"><i class="fas fa-clipboard-list me-2"></i>Stock Take</a></li>
+                            </ul>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'add_inventory' %}"><i class="fas fa-plus-circle me-1"></i> Add Inventory</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'add_product' %}"><i class="fas fa-plus-square me-1"></i> Add Product</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'stock_take' %}"><i class="fas fa-clipboard-list me-1"></i> Stock Take</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="usersDropdownMgr" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-users me-1"></i> Users
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="usersDropdownMgr">
+                                <li><a class="dropdown-item" href="{% url 'users_list' %}"><i class="fas fa-list me-2"></i>Store Users</a></li>
+                                <li><a class="dropdown-item" href="{% url 'create_user' %}"><i class="fas fa-user-plus me-2"></i>Create User</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'sales_report' %}"><i class="fas fa-chart-bar me-1"></i> Reports</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'inventory_transfer' %}"><i class="fas fa-exchange-alt me-1"></i> Transfers</a>
+                            <a class="nav-link" href="{% url 'view_receipts' %}"><i class="fas fa-receipt me-1"></i> Receipts</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'view_receipts' %}"><i class="fas fa-receipt me-1"></i> Receipts</a>
+                            <a class="nav-link" href="{% url 'manager_repairs_view' %}"><i class="fas fa-tools me-1"></i> Repairs</a>
                         </li>
                     {% elif user.role == 'staff' %}
                         <li class="nav-item">
@@ -92,6 +109,19 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'view_receipts' %}"><i class="fas fa-receipt me-1"></i> My Receipts</a>
+                        </li>
+                    {% elif user.role == 'technician' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'repairs_dashboard' %}"><i class="fas fa-tools me-1"></i> Repairs</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'repairs_list' %}"><i class="fas fa-list me-1"></i> All Repairs</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'create_repair' %}"><i class="fas fa-plus-circle me-1"></i> New Repair</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'my_commissions' %}"><i class="fas fa-money-bill-wave me-1"></i> My Commissions</a>
                         </li>
                     {% endif %}
                 </ul>

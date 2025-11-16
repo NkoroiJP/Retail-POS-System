@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}Repairs Dashboard - Technician{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="fas fa-tools me-2"></i>Repairs Dashboard</h2>
+        <p class="text-muted">Manage phone and device repairs</p>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-clock me-2"></i>Pending</h6>
+                <h2 class="mb-0">{{ pending_repairs }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-wrench me-2"></i>In Progress</h6>
+                <h2 class="mb-0">{{ in_progress_repairs }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-check-circle me-2"></i>Completed Today</h6>
+                <h2 class="mb-0">{{ completed_today }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-money-bill-wave me-2"></i>Today's Revenue</h6>
+                <h2 class="mb-0">KES {{ today_revenue|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'create_repair' %}" class="btn btn-primary btn-lg me-2">
+                    <i class="fas fa-plus me-2"></i>New Repair Job
+                </a>
+                <a href="{% url 'repairs_list' %}" class="btn btn-outline-secondary btn-lg me-2">
+                    <i class="fas fa-list me-2"></i>View All Repairs
+                </a>
+                <a href="{% url 'repairs_list' %}?status=pending" class="btn btn-outline-warning btn-lg me-2">
+                    <i class="fas fa-clock me-2"></i>Pending Repairs
+                </a>
+                <a href="{% url 'repairs_list' %}?status=in_progress" class="btn btn-outline-info btn-lg">
+                    <i class="fas fa-wrench me-2"></i>In Progress
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Repairs -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history me-2"></i>Recent Repairs</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_repairs %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Repair ID</th>
+                                <th>Customer</th>
+                                <th>Device</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Total Cost</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for repair in recent_repairs %}
+                            <tr>
+                                <td><strong>{{ repair.repair_id }}</strong></td>
+                                <td>
+                                    {{ repair.customer_name }}<br>
+                                    <small class="text-muted">{{ repair.customer_phone }}</small>
+                                </td>
+                                <td>{{ repair.device_type }}</td>
+                                <td>{{ repair.get_repair_type_display }}</td>
+                                <td>
+                                    {% if repair.status == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% elif repair.status == 'in_progress' %}
+                                        <span class="badge bg-info">In Progress</span>
+                                    {% elif repair.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif repair.status == 'delivered' %}
+                                        <span class="badge bg-primary">Delivered</span>
+                                    {% elif repair.status == 'cancelled' %}
+                                        <span class="badge bg-danger">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                                <td><strong>KES {{ repair.total_cost|floatformat:2 }}</strong></td>
+                                <td>{{ repair.created_at|date:"M d, Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'repair_detail' repair.repair_id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-tools text-muted" style="font-size: 3rem;"></i>
+                    <h5 class="text-muted mt-3">No repairs yet</h5>
+                    <p class="text-muted">Create your first repair job to get started</p>
+                    <a href="{% url 'create_repair' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Create Repair Job
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

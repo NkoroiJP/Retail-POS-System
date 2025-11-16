@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Repair Job{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="fas fa-plus-circle me-2"></i>Create New Repair Job</h2>
+        <p class="text-muted">Register a new device for repair</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-mobile-alt me-2"></i>Repair Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <h6 class="border-bottom pb-2 mb-3">Customer Information</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="customer_name" class="form-label">Customer Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="customer_name" name="customer_name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="customer_phone" class="form-label">Phone Number <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control" id="customer_phone" name="customer_phone" required>
+                        </div>
+                    </div>
+                    
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">Device Information</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="device_type" class="form-label">Device Type <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="device_type" name="device_type" 
+                                   placeholder="e.g., iPhone 12, Samsung Galaxy S21" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="device_imei" class="form-label">IMEI Number (Optional)</label>
+                            <input type="text" class="form-control" id="device_imei" name="device_imei" 
+                                   placeholder="15-digit IMEI">
+                        </div>
+                    </div>
+                    
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">Repair Information</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="repair_type" class="form-label">Repair Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="repair_type" name="repair_type" required>
+                                <option value="">Select repair type</option>
+                                {% for value, label in repair_types %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="labour_charge" class="form-label">Labour Charge (KES) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="labour_charge" name="labour_charge" 
+                                   min="0" step="0.01" value="0" required>
+                            <small class="text-muted">Enter the labour fee for this repair</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="issue_description" class="form-label">Issue Description <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="issue_description" name="issue_description" 
+                                  rows="4" placeholder="Describe the problem with the device..." required></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="technician_notes" class="form-label">Technician Notes (Optional)</label>
+                        <textarea class="form-control" id="technician_notes" name="technician_notes" 
+                                  rows="3" placeholder="Any additional notes or observations..."></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'repairs_dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save me-2"></i>Create Repair Job
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card bg-light">
+            <div class="card-header">
+                <h6><i class="fas fa-info-circle me-2"></i>Instructions</h6>
+            </div>
+            <div class="card-body">
+                <ol class="ps-3">
+                    <li class="mb-2">Fill in customer details accurately</li>
+                    <li class="mb-2">Record device type and IMEI if available</li>
+                    <li class="mb-2">Select the appropriate repair type</li>
+                    <li class="mb-2"><strong>Set labour charge</strong> - this is your service fee</li>
+                    <li class="mb-2">Describe the issue in detail</li>
+                    <li class="mb-2">Add parts later from the repair detail page</li>
+                    <li class="mb-2">Total cost = Parts + Labour</li>
+                </ol>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>Tip:</strong> You can add replacement parts and update the repair status from the repair detail page.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

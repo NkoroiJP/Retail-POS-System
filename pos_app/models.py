@@ -13,6 +13,7 @@ class User(AbstractUser):
         ('admin', 'System Admin'),
         ('manager', 'Store Manager'),
         ('staff', 'Shop Attendant'),
+        ('technician', 'Technician'),
     ]
     
     role = models.CharField(max_length=20, choices=USER_ROLE_CHOICES, default='staff')
@@ -29,6 +30,9 @@ class Store(models.Model):
     address = models.TextField()
     phone = models.CharField(max_length=20)
     email = models.EmailField()
+    tax_id = models.CharField(max_length=50, blank=True, null=True, help_text="VAT/TIN number")
+    website = models.URLField(blank=True, null=True)
+    return_policy_days = models.IntegerField(default=7, help_text="Number of days for returns")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -47,6 +51,8 @@ class Category(models.Model):
 
 class Product(models.Model):
     name = models.CharField(max_length=200)
+    sku = models.CharField(max_length=50, unique=True, blank=True, null=True, help_text="Stock Keeping Unit")
+    barcode = models.CharField(max_length=100, unique=True, blank=True, null=True)
     description = models.TextField(blank=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -87,10 +93,19 @@ class Transaction(models.Model):
         ('return', 'Return'),
     ]
     
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'Cash'),
+        ('card', 'Credit/Debit Card'),
+        ('mobile', 'Mobile Payment'),
+        ('bank_transfer', 'Bank Transfer'),
+    ]
+    
     transaction_id = models.CharField(max_length=50, unique=True, db_index=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='transactions')
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE_CHOICES, default='sale')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='cash')
+    card_last_four = models.CharField(max_length=4, blank=True, null=True, help_text="Last 4 digits of card")
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     vat_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -172,3 +187,83 @@ class AuditLog(models.Model):
     
     def __str__(self):
         return f"{self.user} - {self.action} - {self.timestamp}"
+
+
+class Repair(models.Model):
+    """Model for tracking phone and device repairs"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    REPAIR_TYPE_CHOICES = [
+        ('screen', 'Screen Replacement'),
+        ('battery', 'Battery Replacement'),
+        ('motherboard', 'Motherboard Repair'),
+        ('charging_port', 'Charging Port'),
+        ('camera', 'Camera Repair'),
+        ('speaker', 'Speaker Repair'),
+        ('water_damage', 'Water Damage'),
+        ('software', 'Software Issue'),
+        ('other', 'Other'),
+    ]
+    
+    repair_id = models.CharField(max_length=50, unique=True, db_index=True)
+    customer_name = models.CharField(max_length=200)
+    customer_phone = models.CharField(max_length=20)
+    device_type = models.CharField(max_length=100)  # e.g., "iPhone 12", "Samsung Galaxy S21"
+    device_imei = models.CharField(max_length=50, blank=True)
+    repair_type = models.CharField(max_length=50, choices=REPAIR_TYPE_CHOICES)
+    issue_description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Financial fields
+    parts_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    labour_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Tracking fields
+    technician = models.ForeignKey(User, on_delete=models.CASCADE, related_name='repairs')
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='repairs')
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    
+    # Additional notes
+    technician_notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at', 'store']),
+            models.Index(fields=['technician', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.repair_id} - {self.customer_name} - {self.device_type}"
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate total cost
+        self.total_cost = self.parts_cost + self.labour_charge
+        super().save(*args, **kwargs)
+
+
+class RepairItem(models.Model):
+    """Model for parts/products used in repairs"""
+    repair = models.ForeignKey(Repair, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    def __str__(self):
+        return f"{self.product.name} for {self.repair.repair_id}"
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate total price
+        self.total_price = self.unit_price * self.quantity
+        super().save(*args, **kwargs)

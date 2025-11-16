@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+
+{% block title %}Repair Details - {{ repair.repair_id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-tools me-2"></i>Repair Job {{ repair.repair_id }}</h2>
+                <p class="text-muted mb-0">{{ repair.device_type }} - {{ repair.customer_name }}</p>
+            </div>
+            <div>
+                <a href="{% url 'repairs_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column - Repair Details -->
+    <div class="col-lg-8">
+        <!-- Customer & Device Info -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-user me-2"></i>Customer & Device Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Customer Name:</strong> {{ repair.customer_name }}</p>
+                        <p><strong>Phone:</strong> {{ repair.customer_phone }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Device:</strong> {{ repair.device_type }}</p>
+                        <p><strong>IMEI:</strong> {{ repair.device_imei|default:"N/A" }}</p>
+                    </div>
+                </div>
+                <p><strong>Repair Type:</strong> <span class="badge bg-secondary">{{ repair.get_repair_type_display }}</span></p>
+                <p><strong>Issue Description:</strong></p>
+                <p class="bg-light p-3 rounded">{{ repair.issue_description }}</p>
+                {% if repair.technician_notes %}
+                <p><strong>Technician Notes:</strong></p>
+                <p class="bg-light p-3 rounded">{{ repair.technician_notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Parts Used -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-box me-2"></i>Parts Used</h5>
+                {% if repair.status != 'delivered' and repair.status != 'cancelled' %}
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addPartModal">
+                    <i class="fas fa-plus me-1"></i>Add Part
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if repair_items %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Part/Product</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in repair_items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>KES {{ item.unit_price|floatformat:2 }}</td>
+                                <td>KES {{ item.total_price|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="table-light">
+                                <td colspan="3" class="text-end"><strong>Parts Subtotal:</strong></td>
+                                <td><strong>KES {{ repair.parts_cost|floatformat:2 }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">No parts added yet</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Update Status -->
+        {% if repair.status != 'delivered' and repair.status != 'cancelled' %}
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5><i class="fas fa-tasks me-2"></i>Update Status</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_status">
+                    <div class="col-md-8">
+                        <select name="status" class="form-select" required>
+                            {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if repair.status == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-sync me-2"></i>Update Status
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>This repair has been {{ repair.get_status_display|lower }} and cannot be modified.
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Right Column - Summary & Actions -->
+    <div class="col-lg-4">
+        <!-- Status Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-info-circle me-2"></i>Repair Status</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>Current Status:</strong></p>
+                <h4>
+                    {% if repair.status == 'pending' %}
+                        <span class="badge bg-warning">Pending</span>
+                    {% elif repair.status == 'in_progress' %}
+                        <span class="badge bg-info">In Progress</span>
+                    {% elif repair.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                    {% elif repair.status == 'delivered' %}
+                        <span class="badge bg-primary">Delivered</span>
+                    {% elif repair.status == 'cancelled' %}
+                        <span class="badge bg-danger">Cancelled</span>
+                    {% endif %}
+                </h4>
+                <hr>
+                <p class="mb-1"><small class="text-muted">Created:</small> {{ repair.created_at|date:"M d, Y H:i" }}</p>
+                {% if repair.completed_at %}
+                <p class="mb-1"><small class="text-muted">Completed:</small> {{ repair.completed_at|date:"M d, Y H:i" }}</p>
+                {% endif %}
+                {% if repair.delivered_at %}
+                <p class="mb-1"><small class="text-muted">Delivered:</small> {{ repair.delivered_at|date:"M d, Y H:i" }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Cost Summary -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6><i class="fas fa-calculator me-2"></i>Cost Breakdown</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Parts Cost:</span>
+                    <strong>KES {{ repair.parts_cost|floatformat:2 }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                    <span>Labour Charge:</span>
+                    <strong>KES {{ repair.labour_charge|floatformat:2 }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <strong>Total Cost:</strong>
+                    <h4 class="text-primary mb-0">KES {{ repair.total_cost|floatformat:2 }}</h4>
+                </div>
+                
+                <hr>
+                
+                <!-- Update Labour Charge -->
+                {% if repair.status != 'delivered' and repair.status != 'cancelled' %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_labour">
+                    <label class="form-label">Update Labour Charge:</label>
+                    <div class="input-group">
+                        <input type="number" name="labour_charge" class="form-control" 
+                               value="{{ repair.labour_charge }}" min="0" step="0.01" required>
+                        <button type="submit" class="btn btn-outline-secondary">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <p class="text-muted small">Labour charge cannot be modified after delivery.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-bolt me-2"></i>Actions</h6>
+            </div>
+            <div class="card-body">
+                {% if repair.status == 'completed' %}
+                <button class="btn btn-success w-100 mb-2" onclick="chargeCustomer()">
+                    <i class="fas fa-cash-register me-2"></i>Charge Customer
+                </button>
+                {% endif %}
+                
+                <a href="{% url 'repair_receipt' repair.repair_id %}" class="btn btn-outline-primary w-100 mb-2" target="_blank">
+                    <i class="fas fa-receipt me-2"></i>View Receipt
+                </a>
+                
+                <a href="{% url 'repairs_dashboard' %}" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-home me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Part Modal -->
+<div class="modal fade" id="addPartModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Add Part</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_part">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Select Part/Product</label>
+                        <select name="product_id" class="form-select" required>
+                            <option value="">Choose a product...</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.name }} - KES {{ product.price }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Part</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function chargeCustomer() {
+    if (!confirm('Charge customer for this repair?\n\nThis will create a transaction and mark the repair as delivered.')) {
+        return;
+    }
+    
+    const csrftoken = getCookie('csrftoken');
+    
+    $.ajax({
+        url: '{% url "charge_repair" repair.repair_id %}',
+        type: 'POST',
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        },
+        success: function(response) {
+            if (response.success) {
+                alert('Payment processed successfully!\n\n' +
+                      'Transaction ID: ' + response.transaction_id + '\n' +
+                      'Parts Cost: KES ' + response.parts_cost.toFixed(2) + '\n' +
+                      'Labour Charge: KES ' + response.labour_charge.toFixed(2) + '\n' +
+                      'Subtotal: KES ' + response.subtotal.toFixed(2) + '\n' +
+                      'VAT (16%): KES ' + response.vat_amount.toFixed(2) + '\n' +
+                      'Total: KES ' + response.total_amount.toFixed(2) + '\n' +
+                      'Your Commission: KES ' + response.commission.toFixed(2));
+                
+                // Redirect to repairs list after successful payment
+                window.location.href = '{% url "repairs_list" %}';
+            }
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error';
+            alert('Error processing payment: ' + error);
+        }
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
